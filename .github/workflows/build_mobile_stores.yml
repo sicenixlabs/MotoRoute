@@ -1,0 +1,53 @@
+name: Compilar MotoRuta (.APK Android + GitHub Pages HTTPS)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main", "master", "production" ]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-android-apk:
+    name: "🤖 1. Compilar Instalador MotoRuta-3Telefonos.apk"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Java JDK 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Inicializar Capacitor 6 y Plataforma Android Completa
+        run: |
+          mkdir -p www
+          cp index.html www/index.html
+          npm install
+          rm -rf android
+          npx cap add android
+          npx cap sync android
+
+      - name: Compilar archivo instalable MotoRuta-3Telefonos.apk
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../MotoRuta-3Telefonos.apk
+
+      - name: Publicar MotoRuta-3Telefonos.apk en Artifacts para Descargar
+        uses: actions/upload-artifact@v4
+        with:
+          name: MotoRuta-Instalador-Android-APK
+          path: MotoRuta-3Telefonos.apk
+          if-no-files-found: error
