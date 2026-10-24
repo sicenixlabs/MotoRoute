@@ -1,0 +1,34 @@
+{
+  "appId": "ar.com.motoruta.app",
+  "appName": "MotoRuta",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#060b1d",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "allowNavigation": [
+      "ihqqfbulqhxqbbqlgvgs.supabase.co",
+      "*.supabase.co",
+      "*.mercadopago.com.ar",
+      "*.tile.openstreetmap.org"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1800,
+      "backgroundColor": "#060b1d",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#060b1d"
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "Geolocation": {
+      "enableHighAccuracy": true
+    }
+  }
+}

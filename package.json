@@ -1,0 +1,31 @@
+{
+  "name": "motoruta-mobile-production",
+  "version": "1.0.0",
+  "description": "MotoRuta — Aplicación Móvil Nativa iOS (App Store) y Android (Google Play) para Motociclistas",
+  "main": "www/index.html",
+  "scripts": {
+    "sync": "cap sync",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android",
+    "build:android:apk": "cd android && ./gradlew assembleRelease",
+    "build:android:aab": "cd android && ./gradlew bundleRelease"
+  },
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.19",
+    "@capacitor-community/keep-awake": "^6.0.0",
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/geolocation": "^6.0.1",
+    "@capacitor/haptics": "^6.0.1",
+    "@capacitor/ios": "^6.1.2",
+    "@capacitor/local-notifications": "^6.0.1",
+    "@capacitor/push-notifications": "^6.0.2",
+    "@capacitor/splash-screen": "^6.0.2",
+    "@capacitor/status-bar": "^6.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^6.1.2"
+  }
+}
