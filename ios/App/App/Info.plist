@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>es_AR</string>
+    <key>CFBundleDisplayName</key>
+    <string>MotoRuta</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>ar.com.motoruta.app</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+
+    <!-- PERMISOS OBLIGATORIOS EXIGIDOS POR APPLE APP STORE REVIEW PARA APPS DE MOTOS Y NAVEGACIÓN -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>MotoRuta utiliza tu ubicación GPS precisa para mostrarte en el radar de tu grupo de rodada (Pack Ride), calcular la autonomía real de tu tanque hacia la próxima estación de servicio y ubicar talleres 24h o cocheras solidarias en tu ruta.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>MotoRuta necesita acceso continuo al GPS en segundo plano para mantener tu posición activa en el radar de seguridad grupal (Pack Ride) y detectar detenciones de emergencia (SOS) incluso cuando bloqueás la pantalla del iPhone o lo llevás en el bolsillo de tu campera.</string>
+    <key>NSLocationAlwaysUsageDescription</key>
+    <string>Necesario para transmitir tu telemetría de seguridad al grupo de rodada con la pantalla bloqueada en ruta.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>MotoRuta utiliza el micrófono de tu intercomunicador Bluetooth de casco para ejecutar comandos de voz manos libres en conducción (ej. emitir alerta SOS o reportar ripio suelto sin soltar el manillar).</string>
+    <key>NSCameraUsageDescription</key>
+    <string>MotoRuta utiliza la cámara para escanear el código QR presencial de tus compañeros de rodada en la estación de servicio y para la validación de seguridad KYC.</string>
+
+    <!-- MODOS EN SEGUNDO PLANO (GPS CONTINUO + AUDIO BLUETOOTH DE CASCO + PUSH APNs) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+        <string>audio</string>
+        <string>fetch</string>
+        <string>remote-notification</string>
+    </array>
+
+    <key>UILaunchStoryboardName</key>
+    <string>LaunchScreen</string>
+    <key>UIMainStoryboardFile</key>
+    <string>Main</string>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>armv7</string>
+        <string>gps</string>
+        <string>location-services</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+    <key>UIViewControllerBasedStatusBarAppearance</key>
+    <true/>
+</dict>
+</plist>
