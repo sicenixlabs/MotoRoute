@@ -422,9 +422,39 @@ body.android-phone-mode nav.modern-tab-bar {
   }
 }
 
+
+/* === MODO PRODUCCIÓN DEFINITIVO (SIN ELEMENTOS DE PRUEBA NI SIMULACIÓN) === */
+body.production-clean-mode #btn-open-mobile-stores-prod,
+body.production-clean-mode #btn-header-phone-cockpit-toggle,
+body.production-clean-mode #btn-open-ergonomics-qa,
+body.production-clean-mode #btn-open-legal-security,
+body.production-clean-mode #btn-open-pwa-offline,
+body.production-clean-mode #card-three-phone-field-test,
+body.production-clean-mode #btn-sim-teammate-creates-ride,
+body.production-clean-mode #btn-sim-pack-straggler,
+body.production-clean-mode #btn-test-host-whatsapp-alert,
+body.production-clean-mode #btn-quick-demo-login,
+body.production-clean-mode #btn-nav-play-pause,
+body.production-clean-mode #btn-nav-step-next,
+body.production-clean-mode #android-status-bar,
+body.production-clean-mode #android-bottom-nav,
+body.production-clean-mode #btn-toggle-api-console,
+body.production-clean-mode #api-inspector-drawer {
+  display: none !important;
+}
+
+@keyframes pulse-real-gps {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0.85); }
+  70% { transform: scale(1.08); box-shadow: 0 0 0 16px rgba(6, 182, 212, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(6, 182, 212, 0); }
+}
+.real-gps-rider-dot {
+  animation: pulse-real-gps 1.8s infinite;
+}
+
 </style>
 </head>
-<body class="h-full flex flex-col overflow-hidden select-none">
+<body class="h-full flex flex-col overflow-hidden select-none production-clean-mode">
   <div id="app-root-shell" class="h-full w-full flex flex-col overflow-hidden relative">
 
   <!-- Native Android 14 Status Bar (Visible in Android App Mode) -->
@@ -1568,8 +1598,22 @@ body.android-phone-mode nav.modern-tab-bar {
     <section id="map-section-container" class="order-1 md:order-2 flex-1 w-full h-[48%] md:h-full relative overflow-hidden bg-slate-950 flex flex-col transition-all">
       <div id="map" class="flex-1 w-full z-10"></div>
 
+      <!-- Barra de Ubicación GPS Real en Producción -->
+      <div id="prod-live-gps-bar" class="absolute top-3 left-3 right-14 z-30 flex items-center justify-between gap-2 bg-slate-950/90 backdrop-blur-md border border-cyan-500/50 rounded-xl px-3 py-2 shadow-2xl">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="prod-gps-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+          <div class="min-w-0">
+            <div id="prod-gps-status-title" class="text-[11px] font-black text-white truncate">🛰️ Conectando al GPS real de tu teléfono...</div>
+            <div id="prod-gps-status-coords" class="text-[10px] font-mono text-cyan-300 truncate">Esperando señal satelital del dispositivo</div>
+          </div>
+        </div>
+        <button type="button" id="btn-prod-center-my-gps" onclick="window.centerMapOnMyRealGps(true)" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black px-2.5 py-1.5 rounded-lg text-[11px] shrink-0 shadow-md transition active:scale-95">
+          📍 Mi Ubicación
+        </button>
+      </div>
+
       <!-- Map Legend Overlay -->
-      <div class="absolute top-3 left-3 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 text-[11px] space-y-1.5 shadow-xl pointer-events-none hidden sm:block">
+      <div class="hidden lg:block absolute top-16 left-3 z-20 bg-slate-900/90 backdrop-blur-md border border-slate-800 rounded-xl p-2.5 text-[11px] space-y-1.5 shadow-xl pointer-events-none hidden sm:block">
         <div class="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Referencias del Mapa en Ruta</div>
         <div class="flex items-center gap-2 text-slate-300">
           <span class="w-3 h-3 rounded-full bg-emerald-500/30 border border-emerald-400 inline-block"></span>
@@ -1718,7 +1762,7 @@ body.android-phone-mode nav.modern-tab-bar {
         <button id="btn-float-assisted-nav" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black p-3 rounded-xl border border-cyan-300 shadow-xl shadow-cyan-500/20 active:scale-95 transition" title="Iniciar Navegador Asistido Paso a Paso">
           🧭
         </button>
-        <button id="btn-recenter-map" class="bg-slate-900/90 hover:bg-slate-800 text-white p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition" title="Centrar mapa en Sierras de Córdoba">
+        <button id="btn-recenter-map" class="bg-slate-900/90 hover:bg-slate-800 text-white p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition" title="Centrar mapa en mi ubicación GPS real">
           🎯
         </button>
         <button id="btn-toggle-route-layer" class="bg-slate-900/90 hover:bg-slate-800 text-amber-400 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition" title="Activar/Desactivar Geometría LineString">
@@ -8902,7 +8946,7 @@ COMMIT;`;
 
       // Map Controls & Route Buttons
       document.getElementById('btn-recenter-map').addEventListener('click', () => {
-        if (map) map.flyTo([-31.58, -64.75], 10);
+        if (typeof window.centerMapOnMyRealGps === 'function') { window.centerMapOnMyRealGps(true); }
       });
       document.getElementById('btn-toggle-route-layer').addEventListener('click', () => {
         appState.routeVisible = !appState.routeVisible;
@@ -9033,6 +9077,23 @@ COMMIT;`;
             { status: 'success', data: { session_id: 'nav_live_01', waypoints_count: this.waypoints.length, wake_lock: true } }
           );
 
+          if (document.body.classList.contains('production-clean-mode')) {
+            if (this.timer) clearInterval(this.timer);
+            this.playing = false;
+            document.getElementById('nav-turn-icon').textContent = '🧭';
+            document.getElementById('nav-next-dist').textContent = 'GPS En Vivo';
+            document.getElementById('nav-Order-badge').textContent = 'Señal Satelital Real';
+            document.getElementById('nav-instruction-text').textContent = 'Seguimiento GPS físico activo en tiempo real';
+            const g = window.MOTORUTA_REAL_GPS || {};
+            document.getElementById('nav-poi-alert').textContent = g.hasFix
+              ? ('📍 Coordenadas: ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) + ' (±' + g.accuracy + 'm)')
+              : '🛰️ Buscando satélites GPS de tu celular...';
+            document.getElementById('nav-speed-val').textContent = String(g.speedKmh || 0);
+            document.getElementById('nav-alt-val').textContent = String(g.altitude !== null && g.altitude !== undefined ? g.altitude : '--');
+            if (typeof window.centerMapOnMyRealGps === 'function') window.centerMapOnMyRealGps(false);
+            showToast('Navegador GPS en vivo activado en tu ubicación real', '🛰️');
+            return;
+          }
           this.renderStep();
           this.startLoop();
           showToast('Navegador Asistido activo: guiado paso a paso y telemetría en vivo', '🧭');
@@ -9262,6 +9323,20 @@ COMMIT;`;
       }
 
       function stepPackTelemetry() {
+        if (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix) {
+          window.applyRealGpsFixToApp(
+            window.MOTORUTA_REAL_GPS.lat,
+            window.MOTORUTA_REAL_GPS.lng,
+            window.MOTORUTA_REAL_GPS.accuracy,
+            window.MOTORUTA_REAL_GPS.speedKmh / 3.6,
+            window.MOTORUTA_REAL_GPS.altitude
+          );
+          return;
+        }
+        if (document.body.classList.contains('production-clean-mode')) {
+          if (typeof window.startDefinitiveProductionGps === 'function') window.startDefinitiveProductionGps(true);
+          return;
+        }
         const currRoute = DB.routes.find(r => r.id === appState.selectedRouteId) || DB.routes[0];
         const coords = currRoute.route_geometry.coordinates;
         DB.packSession.step_tick = (DB.packSession.step_tick + 1) % coords.length;
@@ -11643,11 +11718,9 @@ COMMIT;`;
             map.panTo([lat, lng], { animate: true, duration: 0.7 });
           }
         },
-        function() {
-          // Fallback if testing on desktop without hardware GPS permission
-          const currMember = DB.packSession.members[state.phoneSlot - 1] || DB.packSession.members[0];
-          if (currMember) {
-            window.broadcastMyPhoneGpsPosition(currMember.lat, currMember.lng, currMember.speed_kmh || 45);
+        function(err) {
+          if (typeof showToast === 'function') {
+            showToast('Activá la Ubicación (GPS) en tu celular para transmitir tu posición real', '📍');
           }
         },
         { enableHighAccuracy: true, maximumAge: 2000, timeout: 8000 }
@@ -11725,6 +11798,298 @@ COMMIT;`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+
+  // ============================================================================
+  // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
+  // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
+  // ============================================================================
+  window.MOTORUTA_REAL_GPS = {
+    hasFix: false,
+    lat: null,
+    lng: null,
+    accuracy: null,
+    speedKmh: 0,
+    altitude: null,
+    heading: null,
+    watchId: null,
+    capWatchId: null,
+    marker: null,
+    accuracyCircle: null,
+    centeredOnce: false
+  };
+
+  window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters) {
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    const g = window.MOTORUTA_REAL_GPS;
+    const isFirstFix = !g.hasFix;
+    g.hasFix = true;
+    g.lat = Number(lat.toFixed(6));
+    g.lng = Number(lng.toFixed(6));
+    g.accuracy = accuracyMeters ? Math.round(accuracyMeters) : 8;
+    g.speedKmh = (typeof speedMps === 'number' && !isNaN(speedMps) && speedMps > 0) ? Math.round(speedMps * 3.6) : 0;
+    g.altitude = (typeof altitudeMeters === 'number' && !isNaN(altitudeMeters)) ? Math.round(altitudeMeters) : null;
+
+    // 1. Update Top Map GPS Bar (#prod-live-gps-bar) & Bottom Spotlight Card
+    const dotEl = document.getElementById('prod-gps-status-dot');
+    const titleEl = document.getElementById('prod-gps-status-title');
+    const coordsEl = document.getElementById('prod-gps-status-coords');
+    const diagCoordsEl = document.getElementById('prod-diag-coords');
+    if (dotEl) dotEl.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_#10b981]';
+    if (titleEl) {
+      titleEl.textContent = '🛰️ GPS Real Activo · ' + g.speedKmh + ' km/h' + (g.altitude !== null ? (' · ' + g.altitude + ' msnm') : '');
+    }
+    if (coordsEl) {
+      coordsEl.textContent = g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) + ' (Precisión ±' + g.accuracy + 'm)';
+    }
+    if (diagCoordsEl) {
+      diagCoordsEl.textContent = g.lat.toFixed(5) + ', ' + g.lng.toFixed(5);
+    }
+
+    const spotTitle = document.getElementById('spotlight-title');
+    const spotSub = document.getElementById('spotlight-subtitle');
+    const spotStat1 = document.getElementById('spotlight-stat-1');
+    const spotLbl1 = document.getElementById('spotlight-label-1');
+    const spotStat2 = document.getElementById('spotlight-stat-2');
+    const spotLbl2 = document.getElementById('spotlight-label-2');
+    if (spotTitle) spotTitle.textContent = '🛰️ Mi Posición GPS en Tiempo Real';
+    if (spotSub) spotSub.textContent = '📍 ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5);
+    if (spotStat1) spotStat1.textContent = g.speedKmh + ' km/h';
+    if (spotLbl1) spotLbl1.textContent = 'Velocidad';
+    if (spotStat2) spotStat2.textContent = '±' + g.accuracy + ' m';
+    if (spotLbl2) spotLbl2.textContent = 'Precisión GPS';
+
+    // 2. Update SOS, Hazard & Host Coordinate Inputs so emergency/alerts use real physical GPS
+    const sosLat = document.getElementById('sos-lat');
+    const sosLng = document.getElementById('sos-lng');
+    if (sosLat) sosLat.value = g.lat.toFixed(5);
+    if (sosLng) sosLng.value = g.lng.toFixed(5);
+
+    const hazLat = document.getElementById('hazard-lat');
+    const hazLng = document.getElementById('hazard-lng');
+    if (hazLat) hazLat.value = g.lat.toFixed(5);
+    if (hazLng) hazLng.value = g.lng.toFixed(5);
+
+    const hostLat = document.getElementById('host-form-lat');
+    const hostLng = document.getElementById('host-form-lng');
+    if (hostLat && hostLat.value === '-31.4180') hostLat.value = g.lat.toFixed(5);
+    if (hostLng && hostLng.value === '-64.4920') hostLng.value = g.lat.toFixed(5);
+
+    // 3. Update Assisted Navigation HUD if active
+    const navSpeedEl = document.getElementById('nav-speed-val');
+    const navAltEl = document.getElementById('nav-alt-val');
+    const navPoiAlert = document.getElementById('nav-poi-alert');
+    if (navSpeedEl) navSpeedEl.textContent = String(g.speedKmh);
+    if (navAltEl && g.altitude !== null) navAltEl.textContent = String(g.altitude);
+    if (navPoiAlert && document.body.classList.contains('production-clean-mode')) {
+      navPoiAlert.textContent = '📍 Coordenadas GPS: ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) + ' (±' + g.accuracy + 'm)';
+    }
+
+    // 4. Update User's Real Position on the Leaflet Map
+    if (typeof map !== 'undefined' && map && typeof L !== 'undefined') {
+      const nick = (typeof DB !== 'undefined' && DB.jwtPrincipal && DB.jwtPrincipal.rider_nickname)
+        ? DB.jwtPrincipal.rider_nickname
+        : 'Mi Moto';
+
+      if (!g.accuracyCircle) {
+        g.accuracyCircle = L.circle([g.lat, g.lng], {
+          radius: Math.max(g.accuracy, 12),
+          color: '#06b6d4',
+          fillColor: '#06b6d4',
+          fillOpacity: 0.14,
+          weight: 1.5
+        }).addTo(map);
+      } else {
+        g.accuracyCircle.setLatLng([g.lat, g.lng]);
+        g.accuracyCircle.setRadius(Math.max(g.accuracy, 12));
+      }
+
+      const riderPinHtml = '<div class="flex flex-col items-center">' +
+        '<div class="px-2 py-0.5 rounded-full bg-slate-950/95 text-cyan-300 border border-cyan-400 font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1">' +
+        '📍 Vos (@' + nick + ') · ' + g.speedKmh + ' km/h' +
+        '</div>' +
+        '<div class="w-9 h-9 rounded-full bg-cyan-500 border-2 border-white text-slate-950 flex items-center justify-center font-black text-base shadow-xl real-gps-rider-dot">🏍️</div>' +
+        '</div>';
+
+      const riderIcon = L.divIcon({
+        html: riderPinHtml,
+        className: 'custom-pin-real-gps',
+        iconSize: [130, 56],
+        iconAnchor: [65, 44]
+      });
+
+      if (!g.marker) {
+        g.marker = L.marker([g.lat, g.lng], { icon: riderIcon, zIndexOffset: 2000 }).addTo(map);
+      } else {
+        g.marker.setLatLng([g.lat, g.lng]);
+        g.marker.setIcon(riderIcon);
+      }
+
+      if (isFirstFix || !g.centeredOnce) {
+        g.centeredOnce = true;
+        map.setView([g.lat, g.lng], 15, { animate: true });
+      }
+    }
+
+    // 5. Update Pack Ride Session with the User's Real GPS
+    if (typeof DB !== 'undefined' && DB.packSession && Array.isArray(DB.packSession.members)) {
+      const myMember = DB.packSession.members[0];
+      if (myMember) {
+        myMember.lat = g.lat;
+        myMember.lng = g.lng;
+        myMember.speed_kmh = g.speedKmh;
+        myMember.gap_km = 0;
+        myMember.status = 'ok';
+      }
+      if (typeof renderPackMembers === 'function') {
+        renderPackMembers();
+      }
+      if (typeof window.broadcastMyPhoneGpsPosition === 'function') {
+        window.broadcastMyPhoneGpsPosition(g.lat, g.lng, g.speedKmh);
+      }
+    }
+  };
+
+  window.centerMapOnMyRealGps = function(showFeedback) {
+    const g = window.MOTORUTA_REAL_GPS;
+    if (g.hasFix && g.lat !== null && g.lng !== null && typeof map !== 'undefined' && map) {
+      map.flyTo([g.lat, g.lng], 16, { duration: 0.9 });
+      if (showFeedback && typeof showToast === 'function') {
+        showToast('Mapa centrado en tu ubicación GPS real: ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5), '📍');
+      }
+      return;
+    }
+    window.startDefinitiveProductionGps(true);
+  };
+
+  window.startDefinitiveProductionGps = async function(userTriggered) {
+    const titleEl = document.getElementById('prod-gps-status-title');
+    const coordsEl = document.getElementById('prod-gps-status-coords');
+    if (titleEl && !window.MOTORUTA_REAL_GPS.hasFix) {
+      titleEl.textContent = '🛰️ Obteniendo señal satelital GPS de tu teléfono...';
+    }
+
+    // A) Try Capacitor Native Geolocation Plugin first (Android .APK / iOS .IPA)
+    try {
+      const capGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+      if (capGeo) {
+        if (typeof capGeo.requestPermissions === 'function') {
+          await capGeo.requestPermissions();
+        }
+        if (typeof capGeo.getCurrentPosition === 'function') {
+          const pos = await capGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 12000 });
+          if (pos && pos.coords) {
+            window.applyRealGpsFixToApp(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              pos.coords.accuracy,
+              pos.coords.speed,
+              pos.coords.altitude
+            );
+          }
+        }
+        if (!window.MOTORUTA_REAL_GPS.capWatchId && typeof capGeo.watchPosition === 'function') {
+          window.MOTORUTA_REAL_GPS.capWatchId = await capGeo.watchPosition(
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+            function(pos, err) {
+              if (pos && pos.coords) {
+                window.applyRealGpsFixToApp(
+                  pos.coords.latitude,
+                  pos.coords.longitude,
+                  pos.coords.accuracy,
+                  pos.coords.speed,
+                  pos.coords.altitude
+                );
+              }
+            }
+          );
+        }
+      }
+    } catch (capErr) {}
+
+    // B) Standard HTML5 Geolocation API (works in Android WebView & Mobile Browsers)
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          window.applyRealGpsFixToApp(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.speed,
+            pos.coords.altitude
+          );
+          if (userTriggered && typeof map !== 'undefined' && map) {
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, { duration: 0.9 });
+          }
+        },
+        function(err) {
+          if (titleEl && !window.MOTORUTA_REAL_GPS.hasFix) {
+            titleEl.textContent = '⚠️ Permiso de Ubicación GPS pendiente';
+          }
+          if (coordsEl && !window.MOTORUTA_REAL_GPS.hasFix) {
+            coordsEl.textContent = 'Tocá "📍 Mi Ubicación" y elegí "Permitir" en tu celular';
+          }
+          if (userTriggered && typeof showToast === 'function') {
+            showToast('Habilitá el permiso de Ubicación (GPS) para MotoRuta en tu teléfono', '📍');
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
+      );
+
+      if (window.MOTORUTA_REAL_GPS.watchId !== null) {
+        try { navigator.geolocation.clearWatch(window.MOTORUTA_REAL_GPS.watchId); } catch (e) {}
+      }
+      window.MOTORUTA_REAL_GPS.watchId = navigator.geolocation.watchPosition(
+        function(pos) {
+          window.applyRealGpsFixToApp(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.speed,
+            pos.coords.altitude
+          );
+        },
+        function() {},
+        { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
+      );
+    }
+  };
+
+  window.addEventListener('DOMContentLoaded', function() {
+    if (typeof DB !== 'undefined' && DB.packSession) {
+      DB.packSession.title = 'Mi Rodada en Vivo';
+      DB.packSession.meetup_point = 'Ubicación GPS en Vivo';
+      const titleDisp = document.getElementById('pack-active-title-display');
+      const meetDisp = document.getElementById('pack-active-meetup-display');
+      if (titleDisp) titleDisp.textContent = 'Rodada Activa en Tiempo Real';
+      if (meetDisp) meetDisp.textContent = '📍 Posición sincronizada con el GPS físico de tu celular';
+      if (Array.isArray(DB.packSession.members) && DB.packSession.members.length > 1) {
+        DB.packSession.members = [DB.packSession.members[0]];
+      }
+    }
+
+    const spotTitle = document.getElementById('spotlight-title');
+    const spotSub = document.getElementById('spotlight-subtitle');
+    if (spotTitle) spotTitle.textContent = '🛰️ Mi Posición GPS en Tiempo Real';
+    if (spotSub) spotSub.textContent = '📍 Conectando al sensor GPS de tu celular...';
+
+    if (typeof appState !== 'undefined') {
+      appState.routeVisible = false;
+    }
+    setTimeout(function() {
+      if (typeof map !== 'undefined' && map && typeof routePolyline !== 'undefined' && routePolyline) {
+        try { map.removeLayer(routePolyline); } catch (e) {}
+      }
+      if (typeof packMarkers !== 'undefined' && Array.isArray(packMarkers) && typeof map !== 'undefined' && map) {
+        packMarkers.forEach(function(m) { try { map.removeLayer(m); } catch (e) {} });
+        packMarkers.length = 0;
+      }
+    }, 150);
+
+    setTimeout(function() {
+      window.startDefinitiveProductionGps(false);
+    }, 300);
+  });
 
 </script>
 
