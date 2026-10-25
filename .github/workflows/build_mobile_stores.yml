@@ -23,17 +23,49 @@ jobs:
         with:
           node-version: 20
 
-      - name: Instalar Java JDK 17 (Temurin)
+      - name: Instalar Java JDK 21 (Temurin para Capacitor 6 / Gradle 8)
         uses: actions/setup-java@v4
         with:
           distribution: "temurin"
-          java-version: "17"
+          java-version: "21"
 
-      - name: Inicializar Capacitor 6 y Plataforma Android Completa
+      - name: Auto-generar estructura Capacitor 6 y Plataforma Android
         run: |
           mkdir -p www
-          cp index.html www/index.html
-          npm install
+          if [ -f "index.html" ]; then
+            cp index.html www/index.html
+          elif [ -f "biker_app_prototype.html" ]; then
+            cp biker_app_prototype.html www/index.html
+          else
+            echo "ERROR: Subi el archivo index.html a la raiz del repositorio"
+            exit 1
+          fi
+          cat << 'EOF_PKG' > package.json
+          {
+            "name": "motoruta-mobile-production",
+            "version": "1.0.0",
+            "private": true,
+            "dependencies": {
+              "@capacitor/core": "^6.1.2",
+              "@capacitor/android": "^6.1.2",
+              "@capacitor/geolocation": "^6.0.1"
+            },
+            "devDependencies": {
+              "@capacitor/cli": "^6.1.2"
+            }
+          }
+          EOF_PKG
+          cat << 'EOF_CAP' > capacitor.config.json
+          {
+            "appId": "ar.com.motoruta.app",
+            "appName": "MotoRuta",
+            "webDir": "www",
+            "server": {
+              "androidScheme": "https"
+            }
+          }
+          EOF_CAP
+          npm install --legacy-peer-deps
           rm -rf android
           npx cap add android
           npx cap sync android
@@ -42,7 +74,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
           cp app/build/outputs/apk/debug/app-debug.apk ../MotoRuta-3Telefonos.apk
 
       - name: Publicar MotoRuta-3Telefonos.apk en Artifacts para Descargar
