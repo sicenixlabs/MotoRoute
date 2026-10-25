@@ -1,85 +1,126 @@
-name: Compilar MotoRuta (.APK Android + GitHub Pages HTTPS)
+name: Build MotoRuta Mobile Apps (Android APK/AAB)
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main", "master", "production" ]
-
-permissions:
-  contents: write
-  pages: write
-  id-token: write
+    branches: [ main, master ]
 
 jobs:
-  build-android-apk:
-    name: "🤖 1. Compilar Instalador MotoRuta-3Telefonos.apk"
+  build-android:
+    name: Build Android APK & AAB (Ubuntu Free Runner)
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar código del repositorio
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Instalar Node.js 20
+      - name: Setup Node.js 20 & Java 17
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Instalar Java JDK 21 (Temurin para Capacitor 6 / Gradle 8)
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
-          java-version: "21"
+          distribution: 'temurin'
+          java-version: 17
 
-      - name: Auto-generar estructura Capacitor 6 y Plataforma Android
+      - name: Prepare Web Assets & Install Capacitor 6
         run: |
           mkdir -p www
           if [ -f "index.html" ]; then
             cp index.html www/index.html
           elif [ -f "biker_app_prototype.html" ]; then
             cp biker_app_prototype.html www/index.html
-          else
-            echo "ERROR: Subi el archivo index.html a la raiz del repositorio"
-            exit 1
           fi
-          cat << 'EOF_PKG' > package.json
-          {
-            "name": "motoruta-mobile-production",
-            "version": "1.0.0",
-            "private": true,
-            "dependencies": {
-              "@capacitor/core": "^6.1.2",
-              "@capacitor/android": "^6.1.2",
-              "@capacitor/geolocation": "^6.0.1"
-            },
-            "devDependencies": {
-              "@capacitor/cli": "^6.1.2"
-            }
-          }
-          EOF_PKG
-          cat << 'EOF_CAP' > capacitor.config.json
-          {
-            "appId": "ar.com.motoruta.app",
-            "appName": "MotoRuta",
-            "webDir": "www",
-            "server": {
-              "androidScheme": "https"
-            }
-          }
-          EOF_CAP
           npm install --legacy-peer-deps
-          rm -rf android
-          npx cap add android
+          npx cap add android || true
+          npx cap copy android
+
+      - name: Inject Native Android GPS Permissions & Runtime Prompt
+        run: |
+          cat << 'MANIFEST_EOF' > android/app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="@string/app_name"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:supportsRtl="true"
+                  android:usesCleartextTraffic="true"
+                  android:theme="@style/AppTheme">
+
+                  <activity
+                      android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+                      android:name=".MainActivity"
+                      android:label="@string/title_activity_main"
+                      android:theme="@style/AppTheme.NoActionBarLaunch"
+                      android:launchMode="singleTask"
+                      android:exported="true">
+
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+
+                  </activity>
+              </application>
+          </manifest>
+          MANIFEST_EOF
+
+          MAIN_ACT_FILE=$(find android/app/src/main/java -name "MainActivity.java" | head -n 1)
+          if [ -n "$MAIN_ACT_FILE" ]; then
+            PKG_LINE=$(grep "^package " "$MAIN_ACT_FILE" | head -n 1)
+            cat << JAVA_EOF > "$MAIN_ACT_FILE"
+          $PKG_LINE
+
+          import android.Manifest;
+          import android.content.pm.PackageManager;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              public void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+              }
+
+              @Override
+              public void onStart() {
+                  super.onStart();
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                      if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                          requestPermissions(new String[]{
+                              Manifest.permission.ACCESS_FINE_LOCATION,
+                              Manifest.permission.ACCESS_COARSE_LOCATION
+                          }, 1001);
+                      }
+                  }
+              }
+          }
+          JAVA_EOF
+          fi
           npx cap sync android
 
-      - name: Compilar archivo instalable MotoRuta-3Telefonos.apk
+      - name: Build Installable APK & Play Store AAB
+        working-directory: ./android
         run: |
-          cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk ../MotoRuta-3Telefonos.apk
+          ./gradlew assembleDebug bundleRelease
 
-      - name: Publicar MotoRuta-3Telefonos.apk en Artifacts para Descargar
+      - name: Upload Android APK (Install on Phone) & AAB
         uses: actions/upload-artifact@v4
         with:
-          name: MotoRuta-Instalador-Android-APK
-          path: MotoRuta-3Telefonos.apk
-          if-no-files-found: error
+          name: motoruta-android-apk-instalable
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/bundle/release/app-release.aab
