@@ -22,7 +22,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Prepare Web Assets & Install Capacitor 6
+      - name: Prepare Web Assets & Generate Fresh Android Project
         run: |
           mkdir -p www
           if [ -f "index.html" ]; then
@@ -31,13 +31,13 @@ jobs:
             cp biker_app_prototype.html www/index.html
           fi
           npm install --legacy-peer-deps
-          npx cap add android || true
+          rm -rf android
+          npx cap add android
           npx cap copy android
 
       - name: Inject Native Android GPS Permissions & Runtime Prompt
         run: |
           cat << 'MANIFEST_EOF' > android/app/src/main/AndroidManifest.xml
-          <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
               <uses-permission android:name="android.permission.INTERNET" />
