@@ -88,7 +88,7 @@
   
     /* === MIDNIGHT ELECTRIC & GLASSMORPHISM THEME (Inspired by Smart Moto UI) === */
     body {
-      background: radial-gradient(circle at 22% 18%, #102152 0%, #070d24 55%, #030613 100%) !important;
+      background: #050505 !important;
       color: #f8fafc;
       font-family: "Inter", system-ui, -apple-system, sans-serif;
     }
@@ -487,6 +487,7 @@ body.production-clean-mode #api-inspector-drawer {
 }
 
 
+        
         /* === PALETA OFICIAL MOTORUTA: DORADO #F2B81C | NEGRO #050505 | BLANCO HUESO #F5F1E6 | ROJO #D92B2B === */
         :root {
             --mr-gold: #F2B81C;
@@ -497,41 +498,67 @@ body.production-clean-mode #api-inspector-drawer {
             --mr-surface-elevated: #141414;
         }
 
-        body {
+        html, body, #app-root-shell, main, #map-section-container {
+            background: #050505 !important;
             background-color: #050505 !important;
+            background-image: none !important;
             color: #F5F1E6 !important;
         }
 
-        /* Fondos principales en Negro Asfalto #050505 y superficies sutiles */
+        /* Ocultar definitivamente el dibujo de la moto en el cockpit en cualquier modo */
+        .moto-pedestal-stage {
+            display: none !important;
+            height: 0 !important;
+            overflow: hidden !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Fondos principales en Negro Asfalto #050505 y bordes Dorados #F2B81C */
         header,
         #sidebar-panel,
         #mobile-bottom-thumb-nav {
-            background: rgba(5, 5, 5, 0.96) !important;
-            border-color: rgba(242, 184, 28, 0.22) !important;
+            background: #050505 !important;
+            background-color: #050505 !important;
+            background-image: none !important;
+            border-color: rgba(242, 184, 28, 0.28) !important;
         }
 
         .bg-slate-950,
         .bg-slate-900,
         .bg-slate-900\/95,
         .bg-slate-900\/90,
-        .bg-slate-900\/80 {
+        .bg-slate-900\/85,
+        .bg-slate-900\/80,
+        .bg-slate-950\/95,
+        .bg-slate-950\/90,
+        .bg-slate-950\/85,
+        .bg-slate-950\/80 {
+            background: #050505 !important;
             background-color: #050505 !important;
+            background-image: none !important;
         }
 
         .bg-slate-800,
+        .bg-slate-800\/95,
         .bg-slate-800\/90,
         .bg-slate-800\/80,
+        .bg-slate-800\/70,
         .bg-slate-800\/60,
         .bg-slate-800\/50,
         .midnight-glass-card {
-            background: rgba(14, 14, 14, 0.92) !important;
-            border-color: rgba(245, 241, 230, 0.12) !important;
-            box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.85) !important;
+            background: #0e0e0e !important;
+            background-color: #0e0e0e !important;
+            background-image: none !important;
+            border: 1px solid rgba(242, 184, 28, 0.22) !important;
+            box-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.9) !important;
         }
 
         .midnight-metric-tile {
-            background: rgba(10, 10, 10, 0.95) !important;
-            border: 1px solid rgba(242, 184, 28, 0.2) !important;
+            background: #090909 !important;
+            background-color: #090909 !important;
+            background-image: none !important;
+            border: 1px solid rgba(242, 184, 28, 0.3) !important;
         }
 
         /* Tipografía en Blanco Hueso #F5F1E6 */
@@ -542,121 +569,171 @@ body.production-clean-mode #api-inspector-drawer {
         }
 
         .text-slate-300,
-        .text-slate-400 {
+        .text-slate-400,
+        .text-slate-500 {
             color: rgba(245, 241, 230, 0.72) !important;
         }
 
-        /* Dorado MotoRuta #F2B81C como color primario de marca y navegación */
+        /* Dorado MotoRuta #F2B81C como color primario de marca, acentos y botones principales */
         .text-amber-500,
         .text-amber-400,
         .text-amber-300,
         .text-sky-400,
         .text-sky-300,
         .text-cyan-400,
-        .text-indigo-400 {
+        .text-cyan-300,
+        .text-cyan-200,
+        .text-blue-400,
+        .text-indigo-400,
+        .text-emerald-400,
+        .text-emerald-300 {
             color: #F2B81C !important;
         }
 
         .bg-amber-500,
+        .bg-amber-400,
         .bg-amber-600,
         .bg-sky-500,
         .bg-sky-600,
-        .bg-indigo-600 {
+        .bg-cyan-500,
+        .bg-cyan-400,
+        .bg-blue-600,
+        .bg-indigo-600,
+        .bg-emerald-500,
+        .bg-emerald-600,
+        .from-cyan-500,
+        .from-cyan-400,
+        .from-amber-500,
+        .from-amber-600,
+        .from-emerald-500 {
+            background: #F2B81C !important;
             background-color: #F2B81C !important;
+            background-image: none !important;
             color: #050505 !important;
             font-weight: 800 !important;
         }
 
-        .bg-amber-500:hover,
-        .bg-amber-600:hover,
-        .bg-sky-500:hover,
-        .bg-sky-600:hover,
-        .bg-indigo-600:hover {
-            background-color: #ffca3a !important;
-            color: #050505 !important;
+        .bg-cyan-500\/10,
+        .bg-cyan-500\/15,
+        .bg-cyan-500\/20,
+        .bg-amber-500\/10,
+        .bg-amber-500\/15,
+        .bg-amber-500\/20,
+        .bg-emerald-500\/10,
+        .bg-emerald-500\/15,
+        .bg-emerald-500\/20 {
+            background: rgba(242, 184, 28, 0.14) !important;
+            background-color: rgba(242, 184, 28, 0.14) !important;
+            background-image: none !important;
+            color: #F2B81C !important;
+            border-color: rgba(242, 184, 28, 0.4) !important;
         }
 
         .border-amber-500,
+        .border-amber-400,
         .border-amber-500\/50,
         .border-amber-500\/40,
         .border-amber-500\/30,
-        .border-sky-500,
-        .border-sky-500\/50,
-        .border-sky-500\/40,
-        .border-sky-500\/30 {
-            border-color: rgba(242, 184, 28, 0.55) !important;
+        .border-cyan-500,
+        .border-cyan-400,
+        .border-cyan-500\/50,
+        .border-cyan-500\/40,
+        .border-cyan-500\/30,
+        .border-cyan-500\/20,
+        .border-emerald-500\/40,
+        .border-emerald-500\/30,
+        .border-slate-800,
+        .border-slate-700 {
+            border-color: rgba(242, 184, 28, 0.32) !important;
         }
 
-        /* Navegación por pestañas y barra inferior con acento Dorado #F2B81C sobre Negro #050505 */
+        input[type="range"] {
+            accent-color: #F2B81C !important;
+        }
+
+        /* Navegación por pestañas superior e inferior con Dorado #F2B81C sobre Negro #050505 */
         nav.modern-tab-bar {
-            background: #0a0a0a !important;
-            border: 1px solid rgba(242, 184, 28, 0.22) !important;
+            background: #050505 !important;
+            border-bottom: 1px solid rgba(242, 184, 28, 0.28) !important;
         }
 
-        nav.modern-tab-bar button {
-            color: rgba(245, 241, 230, 0.65) !important;
-        }
-
-        nav.modern-tab-bar button.tab-active {
-            background: rgba(242, 184, 28, 0.18) !important;
-            color: #F2B81C !important;
-            border: 1px solid rgba(242, 184, 28, 0.55) !important;
-            box-shadow: 0 2px 12px rgba(242, 184, 28, 0.22) !important;
-        }
-
-        .thumb-nav-item {
+        nav.modern-tab-bar .tab-button {
             color: rgba(245, 241, 230, 0.6) !important;
         }
 
-        .thumb-nav-item.active-thumb-tab {
-            background: rgba(242, 184, 28, 0.16) !important;
+        nav.modern-tab-bar .tab-button.bg-slate-800,
+        nav.modern-tab-bar .tab-button.active-tab {
+            background: rgba(242, 184, 28, 0.15) !important;
             color: #F2B81C !important;
-            border: 1px solid rgba(242, 184, 28, 0.45) !important;
-            box-shadow: 0 0 14px rgba(242, 184, 28, 0.2) !important;
+            font-weight: 800 !important;
+        }
+
+        nav.modern-tab-bar .tab-button.bg-slate-800::after {
+            background: #F2B81C !important;
+            box-shadow: 0 0 12px #F2B81C !important;
+        }
+
+        .thumb-nav-item {
+            color: rgba(245, 241, 230, 0.62) !important;
+            background: transparent !important;
+        }
+
+        .thumb-nav-item.active-thumb-tab {
+            background: rgba(242, 184, 28, 0.18) !important;
+            background-image: none !important;
+            color: #F2B81C !important;
+            border: 1px solid #F2B81C !important;
+            box-shadow: 0 0 14px rgba(242, 184, 28, 0.25) !important;
         }
 
         /* Barra de estado GPS en Dorado #F2B81C y Negro #050505 */
+        #prod-live-gps-bar,
         #gps-status-bar {
-            background: rgba(5, 5, 5, 0.92) !important;
-            border-color: rgba(242, 184, 28, 0.35) !important;
+            background: rgba(5, 5, 5, 0.94) !important;
+            border: 1px solid rgba(242, 184, 28, 0.45) !important;
             color: #F5F1E6 !important;
         }
 
         /* Rojo Acento #D92B2B para SOS, alertas críticas y emergencias */
         #btn-open-sos,
+        .bg-rose-600,
+        .bg-rose-500,
         .bg-red-600,
         .bg-red-500 {
             background: #D92B2B !important;
-            border-color: #F5F1E6 !important;
+            background-color: #D92B2B !important;
+            background-image: none !important;
+            border: 1px solid #F5F1E6 !important;
             color: #F5F1E6 !important;
             box-shadow: 0 4px 18px rgba(217, 43, 43, 0.55) !important;
         }
 
+        .text-rose-400,
+        .text-rose-300,
         .text-red-500,
-        .text-red-400,
-        .text-rose-400 {
+        .text-red-400 {
             color: #D92B2B !important;
         }
 
-        .border-red-500,
-        .border-red-500\/50,
-        .border-red-500\/40,
-        .border-red-500\/30 {
-            border-color: rgba(217, 43, 43, 0.65) !important;
+        .border-rose-500,
+        .border-rose-500\/60,
+        .border-rose-500\/40,
+        .border-red-500 {
+            border-color: #D92B2B !important;
         }
 
         /* Popups de Leaflet e inputs adaptados a Negro #050505, Blanco Hueso #F5F1E6 y Dorado #F2B81C */
         .leaflet-popup-content-wrapper,
         .leaflet-popup-tip {
-            background-color: #050505 !important;
+            background: #050505 !important;
             color: #F5F1E6 !important;
             border: 1px solid #F2B81C !important;
         }
 
         input, select, textarea {
-            background-color: #0d0d0d !important;
+            background-color: #0c0c0c !important;
             color: #F5F1E6 !important;
-            border-color: rgba(242, 184, 28, 0.3) !important;
+            border-color: rgba(242, 184, 28, 0.35) !important;
         }
 
         input:focus, select:focus, textarea:focus {
@@ -844,7 +921,7 @@ body.production-clean-mode #api-inspector-drawer {
             </div>
 
             <!-- 3D Concentric Glowing Pedestal + Sleek Motorcycle Illustration -->
-            <div class="moto-pedestal-stage pt-2 pb-1 flex flex-col items-center justify-center relative z-10">
+            <div class="moto-pedestal-stage hidden" style="display:none !important;" aria-hidden="true">
               <svg viewBox="0 0 280 125" class="w-56 h-28 drop-shadow-[0_14px_22px_rgba(0,212,255,0.28)]" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <!-- Ambient floor reflection -->
                 <ellipse cx="140" cy="108" rx="95" ry="10" fill="url(#pedestalGlow)" />
@@ -12842,5 +12919,31 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     </div>
   </div>
 
+
+<script>
+(function enforceMotoRutaBrandPalette() {
+  function moveCustomStyleAfterTailwind() {
+    var styles = document.querySelectorAll('head style');
+    if (styles.length > 1) {
+      var ourStyle = styles[0];
+      var lastStyle = styles[styles.length - 1];
+      if (ourStyle !== lastStyle && ourStyle.textContent.indexOf('PALETA OFICIAL MOTORUTA') !== -1) {
+        document.head.appendChild(ourStyle);
+      }
+    }
+    var motoStage = document.querySelector('.moto-pedestal-stage');
+    if (motoStage) {
+      motoStage.style.setProperty('display', 'none', 'important');
+    }
+  }
+  moveCustomStyleAfterTailwind();
+  window.addEventListener('DOMContentLoaded', moveCustomStyleAfterTailwind);
+  window.addEventListener('load', function() {
+    moveCustomStyleAfterTailwind();
+    setTimeout(moveCustomStyleAfterTailwind, 300);
+  });
+})();
+</script>
 </body>
+
 </html>
