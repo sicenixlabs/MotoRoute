@@ -1044,7 +1044,7 @@ body.production-clean-mode #api-inspector-drawer {
                 <span class="text-sm">🧭</span>
                 <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Ir a una Dirección o Destino</span>
               </div>
-              <button type="button" id="btn-clear-custom-route" onclick="window.clearSearchedDestinationRoute()" class="hidden text-[10px] bg-slate-900 hover:bg-rose-600 text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-slate-700 font-bold transition">
+              <button type="button" id="btn-clear-custom-route" onclick="window.cancelAllActiveRoutes(true)" class="hidden text-[10px] bg-slate-900 hover:bg-rose-600 text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-slate-700 font-bold transition">
                 ✕ Quitar Ruta
               </button>
             </div>
@@ -1299,6 +1299,9 @@ body.production-clean-mode #api-inspector-drawer {
               <div class="flex items-center gap-2">
                 <button id="btn-focus-route" class="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow">
                   <span>🗺️</span> Ver en Mapa
+                </button>
+                <button type="button" id="btn-clear-gpx-route" onclick="window.cancelAllActiveRoutes(true)" class="hidden bg-slate-900 hover:bg-rose-600 text-slate-200 hover:text-white border border-amber-500/40 font-bold px-2.5 py-2 rounded-lg text-xs transition shrink-0" title="Borrar traza de ruta del mapa">
+                  ✕ Cancelar Ruta
                 </button>
                 <button id="btn-run-autonomy" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-2 rounded-lg text-xs transition" title="Ejecutar GET /api/v1/routes/{id}/autonomy-check">
                   ⛽ Evaluar Tanque
@@ -1947,13 +1950,31 @@ body.production-clean-mode #api-inspector-drawer {
       <div id="map" class="flex-1 w-full z-10"></div>
 
       <!-- Buscador Flotante de Direcciones y Rutas sobre el Mapa (Estilo Google Maps) -->
-      <div id="map-top-address-search-box" class="absolute top-2.5 left-14 right-14 sm:left-14 sm:right-auto sm:w-80 z-20 pointer-events-auto">
+      <div id="map-top-address-search-box" class="absolute top-2.5 left-14 right-14 sm:left-14 sm:right-auto sm:w-96 z-20 pointer-events-auto space-y-1.5">
         <form onsubmit="event.preventDefault(); window.searchAndTraceDestinationRoute('map-search-input');" class="flex items-center bg-slate-950/95 backdrop-blur-md border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden">
           <input type="search" id="map-search-input" placeholder="🔍 Buscar dirección o destino..." class="w-full bg-transparent px-3 py-2 text-xs text-white outline-none border-none" />
+          <button type="button" id="btn-map-clear-route" onclick="window.cancelAllActiveRoutes(true)" class="hidden bg-slate-900 hover:bg-rose-600 text-amber-300 hover:text-white font-black px-2.5 py-2 text-xs transition shrink-0 border-l border-slate-800" title="Cancelar y borrar ruta del mapa">
+            ✕
+          </button>
           <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 text-xs transition shrink-0">
             Ruta
           </button>
         </form>
+        <!-- Barra Flotante de Modo Navegación en Movimiento y Cancelación Rápida -->
+        <div id="map-active-route-pill" class="hidden flex items-center justify-between gap-1.5 bg-slate-950/95 backdrop-blur-md border border-amber-500/60 rounded-xl px-2.5 py-1.5 shadow-xl text-[11px]">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <span id="map-nav-mode-indicator" class="w-2 h-2 rounded-full bg-amber-400 animate-ping shrink-0"></span>
+            <span id="map-active-route-label" class="font-bold text-white truncate">🧭 Navegación Activa</span>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <button type="button" id="btn-toggle-heading-up" onclick="window.toggleNavigationHeadingMode()" class="bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/40 font-bold px-2 py-0.5 rounded-lg text-[10px] transition" title="Alternar orientación del mapa: Rumbo de la Moto vs Norte Arriba">
+              🧭 Rumbo Moto
+            </button>
+            <button type="button" onclick="window.cancelAllActiveRoutes(true)" class="bg-rose-600/25 hover:bg-rose-600 text-rose-200 hover:text-white border border-rose-500/50 font-black px-2 py-0.5 rounded-lg text-[10px] transition" title="Cancelar ruta y limpiar mapa">
+              ✕ Cancelar Ruta
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Barra de Ubicación GPS Real en Producción -->
@@ -7062,10 +7083,17 @@ COMMIT;`;
 
     async function selectRoute(routeId) {
       appState.selectedRouteId = routeId;
+      appState.routeVisible = true;
       renderRoutesSelector();
       await refreshCorridorAndMap();
       await runAutonomyCheckUI();
-      if (map && routePolyline) map.fitBounds(routePolyline.getBounds(), { padding: [45, 45] });
+      if (map && routePolyline) {
+        if (!map.hasLayer(routePolyline)) routePolyline.addTo(map);
+        map.fitBounds(routePolyline.getBounds(), { padding: [45, 45] });
+      }
+      if (typeof window.syncActiveRouteControlButtons === 'function') {
+        window.syncActiveRouteControlButtons(true, 'Ruta GPX activa');
+      }
     }
 
     async function runAutonomyCheckUI() {
@@ -9377,13 +9405,20 @@ COMMIT;`;
         });
       }
       document.getElementById('btn-focus-route').addEventListener('click', () => {
+        appState.routeVisible = true;
         document.body.classList.add('mobile-map-expanded');
         setTimeout(() => {
           if (map) {
             map.invalidateSize();
-            if (routePolyline) map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+            if (routePolyline) {
+              if (!map.hasLayer(routePolyline)) routePolyline.addTo(map);
+              map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+            }
           }
         }, 220);
+        if (typeof window.syncActiveRouteControlButtons === 'function') {
+          window.syncActiveRouteControlButtons(true, 'Ruta GPX en mapa');
+        }
         showToast('Enfocando ruta activa en el mapa', '🗺️');
       });
       document.getElementById('btn-run-autonomy').addEventListener('click', async () => {
@@ -9414,7 +9449,7 @@ COMMIT;`;
       // ============================================================================
       // 8. ASSISTED NAVIGATOR ENGINE (HUD + Web Speech API + Geolocation + Sim)
       // ============================================================================
-      const navEngine = {
+      const navEngine = window.MOTORUTA_NAV_ENGINE = {
         active: false,
         playing: false,
         voiceEnabled: true,
@@ -9500,8 +9535,22 @@ COMMIT;`;
               : '🛰️ Buscando satélites GPS de tu celular...';
             document.getElementById('nav-speed-val').textContent = String(g.speedKmh || 0);
             document.getElementById('nav-alt-val').textContent = String(g.altitude !== null && g.altitude !== undefined ? g.altitude : '--');
-            if (typeof window.centerMapOnMyRealGps === 'function') window.centerMapOnMyRealGps(false);
-            showToast('Navegador GPS en vivo activado en tu ubicación real', '🛰️');
+            if (window.MOTORUTA_NAV_MODE) {
+              window.MOTORUTA_NAV_MODE.enabled = true;
+              window.MOTORUTA_NAV_MODE.autoFollow = true;
+            }
+            if (typeof window.syncActiveRouteControlButtons === 'function') {
+              window.syncActiveRouteControlButtons(true, (curr && curr.title) ? curr.title : 'Navegación en Vivo');
+            }
+            if (typeof map !== 'undefined' && map && typeof g.lat === 'number' && typeof g.lng === 'number') {
+              map.setView([g.lat, g.lng], 16, { animate: true });
+            } else if (typeof window.centerMapOnMyRealGps === 'function') {
+              window.centerMapOnMyRealGps(false);
+            }
+            if (typeof window.applyMapHeadingRotation === 'function' && window.MOTORUTA_NAV_MODE) {
+              window.applyMapHeadingRotation(window.MOTORUTA_NAV_MODE.currentHeadingDeg || 0);
+            }
+            showToast('Modo Navegación en vivo activo · Orientación automática por rumbo', '🧭');
             return;
           }
           this.renderStep();
@@ -9575,8 +9624,11 @@ COMMIT;`;
           }
           document.getElementById('assisted-nav-hud').classList.add('hidden');
           document.body.classList.remove('nav-hud-active', 'mobile-map-expanded');
+          if (!this._skipCancelCascade && typeof window.cancelAllActiveRoutes === 'function') {
+            window.cancelAllActiveRoutes(false);
+          }
           setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-          showToast('Navegación asistida finalizada', '⏹️');
+          showToast('Ruta y navegación canceladas · Mapa limpio', '⏹️');
         }
       };
 
@@ -12214,7 +12266,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V5
+  // MOTORUTA_MOBILE_SYNC_V6
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -12474,7 +12526,8 @@ COMMIT;`;
             pos.coords.longitude,
             pos.coords.accuracy,
             pos.coords.speed,
-            pos.coords.altitude
+            pos.coords.altitude,
+            pos.coords.heading
           );
           if (userTriggered && typeof map !== 'undefined' && map) {
             map.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { duration: 0.8 });
@@ -12491,7 +12544,8 @@ COMMIT;`;
             pos.coords.longitude,
             pos.coords.accuracy,
             pos.coords.speed,
-            pos.coords.altitude
+            pos.coords.altitude,
+            pos.coords.heading
           );
           if (userTriggered && typeof map !== 'undefined' && map) {
             map.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { duration: 0.8 });
@@ -12511,7 +12565,8 @@ COMMIT;`;
             pos.coords.longitude,
             pos.coords.accuracy,
             pos.coords.speed,
-            pos.coords.altitude
+            pos.coords.altitude,
+            pos.coords.heading
           );
         },
         function() {},
@@ -12530,12 +12585,12 @@ COMMIT;`;
           if (typeof capGeo.getCurrentPosition === 'function') {
             capGeo.getCurrentPosition({ enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }).then(function(pos) {
               if (pos && pos.coords) {
-                window.applyRealGpsFixToApp(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.coords.speed, pos.coords.altitude);
+                window.applyRealGpsFixToApp(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.coords.speed, pos.coords.altitude, pos.coords.heading);
               }
             }).catch(function() {});
             capGeo.getCurrentPosition({ enableHighAccuracy: true, timeout: 12000, maximumAge: 5000 }).then(function(pos) {
               if (pos && pos.coords) {
-                window.applyRealGpsFixToApp(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.coords.speed, pos.coords.altitude);
+                window.applyRealGpsFixToApp(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, pos.coords.speed, pos.coords.altitude, pos.coords.heading);
               }
             }).catch(function() {});
           }
@@ -13240,14 +13295,296 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
   });
 
   // ============================================================================
-  // BUSCADOR DE DIRECCIONES Y TRAZADO DE RUTA ESTILO GOOGLE MAPS (NOMINATIM + OSRM)
+  // BUSCADOR DE DIRECCIONES, CANCELACIÓN TOTAL DE RUTAS Y MODO NAVEGACIÓN
+  // EN MOVIMIENTO ESTILO GOOGLE MAPS (AUTO-FOLLOW + RUMBO MOTO / COURSE-UP)
   // ============================================================================
   window.CUSTOM_DESTINATION_ROUTE = {
     polyline: null,
     destMarker: null,
     lastDestination: null,
-    lastSearchResults: []
+    lastSearchResults: [],
+    steps: [],
+    currentStepIdx: 0,
+    totalDistanceKm: 0,
+    totalDurationMin: 0,
+    destLat: null,
+    destLng: null,
+    destLabel: ''
   };
+
+  window.MOTORUTA_NAV_MODE = {
+    enabled: false,
+    orientation: 'heading-up', // 'heading-up' (Rumbo Moto) o 'north-up' (Norte Arriba)
+    autoFollow: true,
+    userPanPauseUntil: 0,
+    currentHeadingDeg: 0,
+    lastFixLat: null,
+    lastFixLng: null,
+    lastFixTs: 0
+  };
+
+  // Utilidad trigonométrica para calcular el rumbo real (0° = Norte, 90° = Este, 180° = Sur, 270° = Oeste)
+  window.calculateBearingDegrees = function(lat1, lng1, lat2, lng2) {
+    const toRad = Math.PI / 180;
+    const toDeg = 180 / Math.PI;
+    const dLon = (lng2 - lng1) * toRad;
+    const y = Math.sin(dLon) * Math.cos(lat2 * toRad);
+    const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+              Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLon);
+    const brng = Math.atan2(y, x) * toDeg;
+    return (brng + 360) % 360;
+  };
+
+  // Distancia en metros entre dos coordenadas GPS
+  window.distanceMetersBetween = function(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = Math.PI / 180;
+    const dLat = (lat2 - lat1) * toRad;
+    const dLng = (lng2 - lng1) * toRad;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  // Aplicar o restaurar rotación del mapa según el rumbo de la moto (Course-Up como Google Maps)
+  window.applyMapHeadingRotation = function(headingDeg) {
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+    const navMode = window.MOTORUTA_NAV_MODE;
+    const cleanHeading = (typeof headingDeg === 'number' && !isNaN(headingDeg)) ? ((headingDeg % 360) + 360) % 360 : 0;
+    navMode.currentHeadingDeg = cleanHeading;
+
+    if (navMode.enabled && navMode.orientation === 'heading-up' && cleanHeading !== 0) {
+      mapEl.style.transition = 'transform 0.45s ease-out';
+      mapEl.style.transformOrigin = 'center center';
+      mapEl.style.transform = 'scale(1.36) rotate(' + (-cleanHeading).toFixed(1) + 'deg)';
+      document.documentElement.style.setProperty('--motoruta-counter-rotate', cleanHeading.toFixed(1) + 'deg');
+      document.body.classList.add('motoruta-course-up-active');
+    } else {
+      mapEl.style.transition = 'transform 0.35s ease-out';
+      mapEl.style.transform = 'scale(1) rotate(0deg)';
+      document.documentElement.style.setProperty('--motoruta-counter-rotate', '0deg');
+      document.body.classList.remove('motoruta-course-up-active');
+    }
+  };
+
+  window.toggleNavigationHeadingMode = function() {
+    const navMode = window.MOTORUTA_NAV_MODE;
+    navMode.enabled = true;
+    navMode.autoFollow = true;
+    navMode.orientation = (navMode.orientation === 'heading-up') ? 'north-up' : 'heading-up';
+    const btn = document.getElementById('btn-toggle-heading-up');
+    if (btn) {
+      btn.textContent = navMode.orientation === 'heading-up' ? '🧭 Rumbo Moto' : '⬆️ Norte Arriba';
+    }
+    window.applyMapHeadingRotation(navMode.currentHeadingDeg);
+    const g = window.MOTORUTA_REAL_GPS || {};
+    if (typeof map !== 'undefined' && map && typeof g.lat === 'number' && typeof g.lng === 'number') {
+      map.setView([g.lat, g.lng], Math.max(map.getZoom(), 16), { animate: true });
+    }
+    if (typeof showToast === 'function') {
+      showToast(
+        navMode.orientation === 'heading-up'
+          ? 'Modo Conducción: el mapa gira automáticamente con el rumbo de tu moto'
+          : 'Mapa fijado con el Norte hacia arriba',
+        '🧭'
+      );
+    }
+  };
+
+  window.syncActiveRouteControlButtons = function(hasRoute, routeLabel) {
+    const btnMapClear = document.getElementById('btn-map-clear-route');
+    const btnGpxClear = document.getElementById('btn-clear-gpx-route');
+    const btnCockpitClear = document.getElementById('btn-clear-custom-route');
+    const routePill = document.getElementById('map-active-route-pill');
+    const routePillLabel = document.getElementById('map-active-route-label');
+
+    if (btnMapClear) btnMapClear.classList.toggle('hidden', !hasRoute);
+    if (btnGpxClear) btnGpxClear.classList.toggle('hidden', !hasRoute);
+    if (btnCockpitClear && hasRoute) btnCockpitClear.classList.remove('hidden');
+    if (routePill) routePill.classList.toggle('hidden', !hasRoute);
+    if (routePillLabel && routeLabel) routePillLabel.textContent = '🧭 ' + routeLabel;
+  };
+
+  // Sobrescribir el pin de la moto para incluir el cono luminoso direccional y la flecha de rumbo (estilo Google Maps)
+  const _baseUpdateRealRiderCircleOnMap = window.updateRealRiderCircleOnMap;
+  window.updateRealRiderCircleOnMap = function() {
+    if (typeof _baseUpdateRealRiderCircleOnMap === 'function') {
+      _baseUpdateRealRiderCircleOnMap();
+    }
+    const g = window.MOTORUTA_REAL_GPS;
+    if (!g || g.lat === null || g.lng === null || !g.marker) return;
+    const navMode = window.MOTORUTA_NAV_MODE || {};
+    const heading = (typeof g.heading === 'number' && !isNaN(g.heading)) ? g.heading : (navMode.currentHeadingDeg || 0);
+    const nick = (typeof DB !== 'undefined' && DB.jwtPrincipal && DB.jwtPrincipal.rider_nickname)
+      ? DB.jwtPrincipal.rider_nickname
+      : 'Mi Moto';
+
+    const coneRotation = Math.round(heading);
+    const riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
+      '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
+      '🏍️ @' + nick + (g.speedKmh > 0 ? (' · ' + g.speedKmh + ' km/h') : '') +
+      '</div>' +
+      '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
+        '<div style="position:absolute;inset:-8px;transform:rotate(' + coneRotation + 'deg);transition:transform 0.35s ease-out;pointer-events:none;display:flex; flex-direction:column; align-items:center;">' +
+          '<div style="width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid rgba(242,184,28,0.55);filter:drop-shadow(0 0 6px #F2B81C);margin-top:-6px;"></div>' +
+        '</div>' +
+        '<div style="background:#F2B81C;color:#050505;border:2px solid #F5F1E6;box-shadow:0 0 18px rgba(242,184,28,0.9);" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base real-gps-rider-dot relative z-10">' +
+          (navMode.enabled && g.speedKmh >= 3 ? '<span style="display:inline-block;transform:rotate(' + coneRotation + 'deg);font-size:15px;line-height:1;">▲</span>' : '🏍️') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+    const riderIcon = L.divIcon({
+      html: riderPinHtml,
+      className: 'custom-pin-real-gps',
+      iconSize: [150, 68],
+      iconAnchor: [75, 48]
+    });
+    g.marker.setIcon(riderIcon);
+  };
+
+  // Actualizar HUD de Navegación Paso a Paso en tiempo real según el avance de la moto
+  window.updateLiveDrivingHudFromGps = function(lat, lng, speedKmh, accuracyMeters, altitudeMeters) {
+    const custom = window.CUSTOM_DESTINATION_ROUTE;
+    const navMode = window.MOTORUTA_NAV_MODE;
+    const hasCustomRoute = Boolean(custom && custom.polyline && custom.destLat !== null);
+    const hasGpxRoute = Boolean(typeof appState !== 'undefined' && appState.routeVisible && typeof routePolyline !== 'undefined' && routePolyline);
+
+    // Si la moto se pone en movimiento (>= 6 km/h) y hay una ruta activa, activar seguimiento estilo Google Maps automáticamente
+    if ((hasCustomRoute || hasGpxRoute) && speedKmh >= 6 && !navMode.enabled) {
+      navMode.enabled = true;
+      navMode.autoFollow = true;
+    }
+
+    // Si estamos en modo navegación activo y autoFollow está prendido, centrar suavemente y orientar rumbo
+    if (navMode.enabled && navMode.autoFollow && Date.now() > navMode.userPanPauseUntil) {
+      if (typeof map !== 'undefined' && map) {
+        const targetZoom = Math.max(map.getZoom(), 16);
+        map.setView([lat, lng], targetZoom, { animate: true });
+      }
+      window.applyMapHeadingRotation(navMode.currentHeadingDeg);
+    }
+
+    // Actualizar indicadores del HUD si está visible o si hay ruta personalizada activa
+    if (hasCustomRoute) {
+      const remMeters = window.distanceMetersBetween(lat, lng, custom.destLat, custom.destLng);
+      const remKm = remMeters / 1000.0;
+      const remKmEl = document.getElementById('nav-rem-km');
+      if (remKmEl) remKmEl.textContent = remKm >= 10 ? String(Math.round(remKm)) : remKm.toFixed(1);
+
+      // Buscar el próximo paso de maniobra de OSRM más cercano hacia adelante
+      if (Array.isArray(custom.steps) && custom.steps.length > 0) {
+        let bestIdx = custom.currentStepIdx || 0;
+        let minStepDist = Infinity;
+        for (let i = bestIdx; i < custom.steps.length; i++) {
+          const st = custom.steps[i];
+          const d = window.distanceMetersBetween(lat, lng, st.lat, st.lng);
+          if (d < 45 && i < custom.steps.length - 1) {
+            bestIdx = i + 1;
+          } else if (d < minStepDist) {
+            minStepDist = d;
+          }
+        }
+        custom.currentStepIdx = bestIdx;
+        const currStep = custom.steps[bestIdx] || custom.steps[custom.steps.length - 1];
+        if (currStep) {
+          const stepDistM = window.distanceMetersBetween(lat, lng, currStep.lat, currStep.lng);
+          const distLabel = stepDistM >= 1000 ? ('A ' + (stepDistM / 1000).toFixed(1) + ' km') : ('A ' + Math.max(10, Math.round(stepDistM / 10) * 10) + ' m');
+          const iconEl = document.getElementById('nav-turn-icon');
+          const nextDistEl = document.getElementById('nav-next-dist');
+          const badgeEl = document.getElementById('nav-Order-badge');
+          const instrEl = document.getElementById('nav-instruction-text');
+          const poiEl = document.getElementById('nav-poi-alert');
+
+          if (iconEl) iconEl.textContent = currStep.icon || '⬆️';
+          if (nextDistEl) nextDistEl.textContent = remMeters < 60 ? 'En destino' : distLabel;
+          if (badgeEl) badgeEl.textContent = 'Paso ' + (bestIdx + 1) + '/' + custom.steps.length;
+          if (instrEl) instrEl.textContent = currStep.instruction;
+          if (poiEl) {
+            const etaMins = Math.max(1, Math.round((remKm / Math.max(speedKmh || 45, 25)) * 60));
+            poiEl.textContent = '🏁 Destino a ' + remKm.toFixed(1) + ' km · ⏱️ Llegada est. en ' + etaMins + ' min';
+          }
+        }
+      }
+    }
+  };
+
+  // Interceptar actualizaciones del GPS para calcular rumbo en movimiento (Course-over-Ground) y velocidad real
+  const _prevApplyGpsForNav = window.applyRealGpsFixToApp;
+  window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters, headingDeg) {
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const navMode = window.MOTORUTA_NAV_MODE;
+    const now = Date.now();
+
+    let computedSpeedMps = speedMps;
+    let computedHeading = (typeof headingDeg === 'number' && !isNaN(headingDeg) && headingDeg >= 0) ? headingDeg : null;
+
+    if (typeof navMode.lastFixLat === 'number' && typeof navMode.lastFixLng === 'number') {
+      const movedMeters = window.distanceMetersBetween(navMode.lastFixLat, navMode.lastFixLng, lat, lng);
+      const dtSec = (now - (navMode.lastFixTs || now)) / 1000.0;
+
+      // Si el teléfono se desplazó al menos 2.5 metros, calculamos el rumbo exacto de avance de la moto
+      if (movedMeters >= 2.5) {
+        const bearing = window.calculateBearingDegrees(navMode.lastFixLat, navMode.lastFixLng, lat, lng);
+        if (computedHeading === null) {
+          computedHeading = bearing;
+        }
+        // Si el navegador móvil no reporta speedMps, lo calculamos por desplazamiento GPS
+        if ((computedSpeedMps === null || computedSpeedMps === undefined || isNaN(computedSpeedMps)) && dtSec > 0.4 && movedMeters < 500) {
+          computedSpeedMps = movedMeters / dtSec;
+        }
+      }
+    }
+
+    navMode.lastFixLat = lat;
+    navMode.lastFixLng = lng;
+    navMode.lastFixTs = now;
+
+    if (computedHeading !== null) {
+      g.heading = Math.round(computedHeading);
+      navMode.currentHeadingDeg = g.heading;
+    }
+
+    if (typeof _prevApplyGpsForNav === 'function') {
+      _prevApplyGpsForNav(lat, lng, accuracyMeters, computedSpeedMps, altitudeMeters);
+    }
+
+    window.updateLiveDrivingHudFromGps(lat, lng, g.speedKmh || 0, accuracyMeters, altitudeMeters);
+  };
+
+  // Escuchar brújula interna del teléfono (DeviceOrientation) como apoyo de orientación cuando la moto arranca
+  window.addEventListener('deviceorientation', function(ev) {
+    const g = window.MOTORUTA_REAL_GPS || {};
+    if (g.speedKmh && g.speedKmh > 8) return; // En velocidad prevalece el vector GPS de movimiento real
+    let compassHeading = null;
+    if (typeof ev.webkitCompassHeading === 'number' && !isNaN(ev.webkitCompassHeading)) {
+      compassHeading = ev.webkitCompassHeading;
+    } else if (ev.absolute === true && typeof ev.alpha === 'number' && !isNaN(ev.alpha)) {
+      compassHeading = (360 - ev.alpha) % 360;
+    }
+    if (compassHeading !== null) {
+      g.heading = Math.round(compassHeading);
+      window.MOTORUTA_NAV_MODE.currentHeadingDeg = g.heading;
+      if (window.MOTORUTA_NAV_MODE.enabled && window.MOTORUTA_NAV_MODE.orientation === 'heading-up') {
+        window.applyMapHeadingRotation(g.heading);
+      }
+    }
+  }, true);
+
+  // Si el usuario arrastra el mapa manualmente, pausar auto-centrado por 10 segundos para dejarlo explorar
+  window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      if (typeof map !== 'undefined' && map && typeof map.on === 'function') {
+        map.on('dragstart', function() {
+          if (window.MOTORUTA_NAV_MODE) {
+            window.MOTORUTA_NAV_MODE.userPanPauseUntil = Date.now() + 10000;
+          }
+        });
+      }
+    }, 600);
+  });
 
   window.selectSearchResultByIndex = function(idx) {
     const list = window.CUSTOM_DESTINATION_ROUTE.lastSearchResults || [];
@@ -13298,7 +13635,6 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
         }).join('');
       }
 
-      // Trazar inmediatamente hacia el resultado principal más relevante
       const top = places[0];
       await window.traceRouteToCoordinates(Number(top.lat), Number(top.lon), top.display_name || query);
     } catch (err) {
@@ -13308,29 +13644,62 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     }
   };
 
+  window.formatOsrmManeuverInstruction = function(step, destShortLabel) {
+    if (!step || !step.maneuver) return { icon: '⬆️', text: 'Continuar por la ruta trazada' };
+    const type = step.maneuver.type || '';
+    const mod = step.maneuver.modifier || '';
+    const street = step.name ? (' por ' + step.name) : '';
+    if (type === 'arrive') {
+      return { icon: '🏁', text: 'Llegada a ' + (destShortLabel || 'destino') };
+    }
+    if (type === 'depart') {
+      return { icon: '🏍️', text: 'Salir' + (street || ' desde tu ubicación actual') };
+    }
+    if (mod.indexOf('left') !== -1) {
+      return { icon: '↰', text: 'Girar a la izquierda' + street };
+    }
+    if (mod.indexOf('right') !== -1) {
+      return { icon: '↱', text: 'Girar a la derecha' + street };
+    }
+    if (type === 'roundabout' || type === 'rotary') {
+      return { icon: '🔄', text: 'Tomar la rotonda' + street };
+    }
+    return { icon: '⬆️', text: 'Continuar recto' + street };
+  };
+
   window.traceRouteToCoordinates = async function(destLat, destLng, destLabel) {
     if (typeof map === 'undefined' || !map || typeof L === 'undefined') return;
     const g = window.MOTORUTA_REAL_GPS || {};
     const origLat = (typeof g.lat === 'number' && !isNaN(g.lat)) ? g.lat : -32.9468;
     const origLng = (typeof g.lng === 'number' && !isNaN(g.lng)) ? g.lng : -60.6393;
 
-    // Limpiar ruta anterior si existía
+    // Primero limpiar cualquier otra traza previa (tanto GPX como destino anterior)
+    if (typeof routePolyline !== 'undefined' && routePolyline) {
+      try { map.removeLayer(routePolyline); } catch (e) {}
+    }
+    if (typeof appState !== 'undefined') {
+      appState.routeVisible = false;
+    }
     if (window.CUSTOM_DESTINATION_ROUTE.polyline) {
       try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.polyline); } catch (e) {}
+      window.CUSTOM_DESTINATION_ROUTE.polyline = null;
     }
     if (window.CUSTOM_DESTINATION_ROUTE.destMarker) {
       try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.destMarker); } catch (e) {}
+      window.CUSTOM_DESTINATION_ROUTE.destMarker = null;
     }
 
+    const shortLabel = String(destLabel || 'Destino').split(',')[0];
     let routeCoordsLatLng = [[origLat, origLng], [destLat, destLng]];
     let distKm = haversineKm(origLng, origLat, destLng, destLat);
     let durationMin = Math.max(1, Math.round((distKm / 55) * 60));
+    let parsedSteps = [];
 
     try {
       const osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
         origLng.toFixed(6) + ',' + origLat.toFixed(6) + ';' +
         destLng.toFixed(6) + ',' + destLat.toFixed(6) +
-        '?overview=full&geometries=geojson';
+        '?overview=full&geometries=geojson&steps=true';
       const r = await fetch(osrmUrl);
       if (r.ok) {
         const routeData = await r.json();
@@ -13345,13 +13714,23 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
           if (typeof best.duration === 'number') {
             durationMin = Math.max(1, Math.round(best.duration / 60.0));
           }
+          if (Array.isArray(best.legs) && best.legs[0] && Array.isArray(best.legs[0].steps)) {
+            parsedSteps = best.legs[0].steps.map(function(st) {
+              const loc = (st.maneuver && Array.isArray(st.maneuver.location)) ? st.maneuver.location : [destLng, destLat];
+              const fmt = window.formatOsrmManeuverInstruction(st, shortLabel);
+              return {
+                lat: Number(loc[1]),
+                lng: Number(loc[0]),
+                icon: fmt.icon,
+                instruction: fmt.text,
+                distanceMeters: Number(st.distance || 0)
+              };
+            });
+          }
         }
       }
-    } catch (osrmErr) {
-      // Si el servidor OSRM no responde, traza línea directa con distancia geodésica
-    }
+    } catch (osrmErr) {}
 
-    // Dibujar línea de ruta en Dorado MotoRuta (#F2B81C) sobre el mapa
     window.CUSTOM_DESTINATION_ROUTE.polyline = L.polyline(routeCoordsLatLng, {
       color: '#F2B81C',
       weight: 6,
@@ -13360,7 +13739,6 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
       lineJoin: 'round'
     }).addTo(map);
 
-    const shortLabel = String(destLabel || 'Destino').split(',')[0];
     const destPinHtml = '<div class="flex flex-col items-center">' +
       '<div style="background:#050505;color:#F5F1E6;border:1.5px solid #F2B81C;" class="px-2 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap shadow-xl mb-1">' +
       '🏁 ' + shortLabel + ' (' + distKm.toFixed(1) + ' km)' +
@@ -13376,11 +13754,30 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     });
 
     window.CUSTOM_DESTINATION_ROUTE.destMarker = L.marker([destLat, destLng], { icon: destIcon, zIndexOffset: 1900 }).addTo(map);
+    window.CUSTOM_DESTINATION_ROUTE.destLat = destLat;
+    window.CUSTOM_DESTINATION_ROUTE.destLng = destLng;
+    window.CUSTOM_DESTINATION_ROUTE.destLabel = shortLabel;
+    window.CUSTOM_DESTINATION_ROUTE.totalDistanceKm = distKm;
+    window.CUSTOM_DESTINATION_ROUTE.totalDurationMin = durationMin;
+    window.CUSTOM_DESTINATION_ROUTE.steps = parsedSteps;
+    window.CUSTOM_DESTINATION_ROUTE.currentStepIdx = 0;
 
-    // Ajustar el mapa para mostrar toda la ruta desde la moto hasta el destino
+    // Activar Modo Navegación Conducción y calcular rumbo inicial hacia el primer tramo de la ruta
+    if (routeCoordsLatLng.length >= 2) {
+      const nextPt = routeCoordsLatLng[Math.min(3, routeCoordsLatLng.length - 1)];
+      const initialBearing = window.calculateBearingDegrees(origLat, origLng, nextPt[0], nextPt[1]);
+      g.heading = Math.round(initialBearing);
+      window.MOTORUTA_NAV_MODE.currentHeadingDeg = g.heading;
+    }
+    window.MOTORUTA_NAV_MODE.enabled = true;
+    window.MOTORUTA_NAV_MODE.autoFollow = true;
+    window.updateRealRiderCircleOnMap();
+
+    // Mostrar la vista de la ruta y habilitar controles de cancelación
     map.fitBounds(window.CUSTOM_DESTINATION_ROUTE.polyline.getBounds(), { padding: [50, 50] });
+    window.syncActiveRouteControlButtons(true, shortLabel + ' (' + distKm.toFixed(1) + ' km)');
 
-    // Actualizar tarjeta resumen y botón para abrir en Google Maps si desea navegación hablada externa
+    // Actualizar tarjeta en el Cockpit y activar el HUD superior de navegación paso a paso
     const summaryBox = document.getElementById('destination-active-route-summary');
     const titleEl = document.getElementById('dest-route-title');
     const metricsEl = document.getElementById('dest-route-metrics');
@@ -13403,22 +13800,77 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
                        '&destination=' + destLat + ',' + destLng + '&travelmode=driving';
     }
 
+    // Mostrar HUD de navegación en vivo para que el conductor vea maniobras y pueda tocar "✕ Salir" para borrar la ruta
+    const hudEl = document.getElementById('assisted-nav-hud');
+    if (hudEl) {
+      hudEl.classList.remove('hidden');
+      document.body.classList.add('nav-hud-active', 'mobile-map-expanded');
+      setTimeout(function() { if (map) map.invalidateSize(); }, 220);
+    }
+    window.updateLiveDrivingHudFromGps(origLat, origLng, g.speedKmh || 0, g.accuracy || 10, g.altitude);
+
     if (typeof showToast === 'function') {
-      showToast('Ruta trazada hacia ' + shortLabel + ' (' + distKm.toFixed(1) + ' km)', '🧭');
+      showToast('Ruta activa hacia ' + shortLabel + ' · Modo Navegación listo', '🧭');
     }
   };
 
-  window.clearSearchedDestinationRoute = function() {
-    if (typeof map !== 'undefined' && map) {
-      if (window.CUSTOM_DESTINATION_ROUTE.polyline) {
-        try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.polyline); } catch (e) {}
-        window.CUSTOM_DESTINATION_ROUTE.polyline = null;
-      }
-      if (window.CUSTOM_DESTINATION_ROUTE.destMarker) {
-        try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.destMarker); } catch (e) {}
-        window.CUSTOM_DESTINATION_ROUTE.destMarker = null;
-      }
+  // FUNCIÓN UNIFICADA PARA CANCELAR Y BORRAR CUALQUIER RUTA DEL MAPA (GPX O BUSCADOR)
+  window.cancelAllActiveRoutes = function(showNotification) {
+    // 1. Ocultar y remover la polilínea de rutas GPX (routePolyline)
+    if (typeof appState !== 'undefined') {
+      appState.routeVisible = false;
     }
+    if (typeof map !== 'undefined' && map) {
+      if (typeof routePolyline !== 'undefined' && routePolyline) {
+        try { map.removeLayer(routePolyline); } catch (e) {}
+      }
+      // 2. Remover la polilínea y marcador de destino buscado (CUSTOM_DESTINATION_ROUTE)
+      if (window.CUSTOM_DESTINATION_ROUTE) {
+        if (window.CUSTOM_DESTINATION_ROUTE.polyline) {
+          try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.polyline); } catch (e) {}
+          window.CUSTOM_DESTINATION_ROUTE.polyline = null;
+        }
+        if (window.CUSTOM_DESTINATION_ROUTE.destMarker) {
+          try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.destMarker); } catch (e) {}
+          window.CUSTOM_DESTINATION_ROUTE.destMarker = null;
+        }
+        window.CUSTOM_DESTINATION_ROUTE.destLat = null;
+        window.CUSTOM_DESTINATION_ROUTE.destLng = null;
+        window.CUSTOM_DESTINATION_ROUTE.steps = [];
+      }
+      // 3. Limpiar cualquier L.Polyline residual en el mapa que no sea de una rodada grupal en vivo
+      try {
+        map.eachLayer(function(layer) {
+          if (typeof L !== 'undefined' && layer instanceof L.Polyline && !(layer instanceof L.Polygon) && !(layer instanceof L.Circle)) {
+            const isLivePackLine = (typeof packFormationLine !== 'undefined' && layer === packFormationLine && typeof DB !== 'undefined' && DB.packSession && DB.packSession.is_live);
+            if (!isLivePackLine) {
+              try { map.removeLayer(layer); } catch (e) {}
+            }
+          }
+        });
+      } catch (e) {}
+    }
+
+    // 4. Detener el motor de navegación asistida si estaba activo y ocultar su HUD
+    if (window.MOTORUTA_NAV_ENGINE && window.MOTORUTA_NAV_ENGINE.active) {
+      window.MOTORUTA_NAV_ENGINE._skipCancelCascade = true;
+      window.MOTORUTA_NAV_ENGINE.stop();
+      window.MOTORUTA_NAV_ENGINE._skipCancelCascade = false;
+    } else {
+      const hudEl = document.getElementById('assisted-nav-hud');
+      if (hudEl) hudEl.classList.add('hidden');
+      document.body.classList.remove('nav-hud-active');
+    }
+
+    // 5. Desactivar rotación de rumbo y restaurar orientación Norte Arriba
+    if (window.MOTORUTA_NAV_MODE) {
+      window.MOTORUTA_NAV_MODE.enabled = false;
+      window.MOTORUTA_NAV_MODE.autoFollow = false;
+    }
+    window.applyMapHeadingRotation(0);
+    window.updateRealRiderCircleOnMap();
+
+    // 6. Limpiar cajas de búsqueda y botones de ruta activa
     const summaryBox = document.getElementById('destination-active-route-summary');
     const clearBtn = document.getElementById('btn-clear-custom-route');
     const resultsBox = document.getElementById('destination-search-results-list');
@@ -13430,15 +13882,30 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     if (resultsBox) resultsBox.classList.add('hidden');
     if (sideInput) sideInput.value = '';
     if (mapInput) mapInput.value = '';
+    window.syncActiveRouteControlButtons(false, '');
 
+    // 7. Re-centrar suavemente en la posición real de la moto
     if (typeof window.centerMapOnMyRealGps === 'function') {
       window.centerMapOnMyRealGps(false);
     }
-    if (typeof showToast === 'function') {
-      showToast('Ruta personalizada quitada del mapa', '🗺️');
+    if (showNotification && typeof showToast === 'function') {
+      showToast('Ruta cancelada y borrada del mapa', '🗺️');
     }
   };
+
+  window.clearSearchedDestinationRoute = function() {
+    window.cancelAllActiveRoutes(true);
+  };
 </script>
+<style>
+  /* Contra-rotar etiquetas de marcadores cuando el mapa gira en Modo Rumbo Moto (Course-Up) */
+  body.motoruta-course-up-active .motoruta-rider-pin-wrapper,
+  body.motoruta-course-up-active .custom-dest-pin > div,
+  body.motoruta-course-up-active .pack-rider-pin > div {
+    transform: rotate(var(--motoruta-counter-rotate, 0deg));
+    transition: transform 0.45s ease-out;
+  }
+</style>
 </body>
 
 </html>
