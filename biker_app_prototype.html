@@ -2008,66 +2008,54 @@ body.production-clean-mode #api-inspector-drawer {
         </div>
       </div>
 
-      <!-- Assisted Navigation Turn-by-Turn HUD Overlay -->
-      <div id="assisted-nav-hud" class="hidden absolute inset-x-3 top-3 z-30 pointer-events-none flex flex-col gap-2 max-w-xl mx-auto">
-        <!-- Top Turn-by-Turn Instruction Card -->
-        <div class="pointer-events-auto bg-slate-950/95 backdrop-blur-md border-2 border-cyan-500/60 rounded-2xl p-3.5 shadow-2xl flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <div id="nav-turn-icon" class="w-12 h-12 rounded-xl bg-cyan-500 text-slate-950 flex items-center justify-center text-2xl font-black shrink-0 shadow-lg shadow-cyan-500/30">
+      <!-- Assisted Navigation Turn-by-Turn HUD Overlay (Opción 1: Cinta Superior Unificada de 1 sola línea) -->
+      <div id="assisted-nav-hud" class="hidden absolute inset-x-2 top-2 z-30 pointer-events-none max-w-2xl mx-auto">
+        <div class="pointer-events-auto bg-slate-950/95 backdrop-blur-md border border-amber-500/70 rounded-xl px-2.5 py-1.5 shadow-2xl flex items-center justify-between gap-2">
+          <!-- Izquierda: Ícono de maniobra + distancia/calle + resumen compacto -->
+          <div class="flex items-center gap-2 min-w-0 flex-1">
+            <div id="nav-turn-icon" class="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 flex items-center justify-center text-base font-black shrink-0 shadow">
               ↱
             </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <span id="nav-next-dist" class="text-lg font-black text-cyan-400 font-mono">A 4.2 km</span>
-                <span id="nav-Order-badge" class="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-800 text-amber-400 border border-amber-500/30">Tramo 1/5</span>
-                <span id="nav-wake-badge" class="hidden sm:inline-flex text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">🔆 WakeLock ON</span>
+            <div class="min-w-0 flex-1 leading-tight">
+              <div class="flex items-baseline gap-1.5 truncate">
+                <span id="nav-next-dist" class="text-xs font-black text-amber-400 font-mono shrink-0">A 100 m</span>
+                <span class="text-slate-500 text-[10px] shrink-0">·</span>
+                <span id="nav-instruction-text" class="text-[11px] font-bold text-white truncate">Continuar por la ruta</span>
+                <span id="nav-Order-badge" style="display:none !important;" class="hidden" aria-hidden="true">Tramo 1/5</span>
+                <span id="nav-wake-badge" style="display:none !important;" class="hidden" aria-hidden="true">🔆 WakeLock ON</span>
               </div>
-              <p id="nav-instruction-text" class="text-xs sm:text-sm font-bold text-white leading-snug mt-0.5">
-                Ascenso sinuoso hacia Villa Carlos Paz · Asfalto verificado
-              </p>
-              <p id="nav-poi-alert" class="text-[11px] text-amber-300 mt-0.5">
-                ⛽ Próxima YPF El Cóndor a 168 km · 🏠 2 anfitriones en corredor
+              <p id="nav-poi-alert" class="text-[10px] text-slate-300 truncate mt-0.5">
+                🏁 Navegación activa
               </p>
             </div>
           </div>
-          <button id="btn-nav-stop" class="bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/40 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shrink-0" title="Finalizar Navegación">
-            ✕ Salir
-          </button>
-        </div>
 
-        <!-- Telemetry & Controls Cockpit Bar (Solo Velocidad, Altitud y Botón de Voz) -->
-        <div class="pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700/90 rounded-2xl p-2.5 shadow-xl flex items-center justify-between gap-3 text-xs">
-          <div class="flex items-center gap-4 px-2">
-            <div>
-              <div class="text-[9px] uppercase text-slate-400 font-bold">Velocidad</div>
-              <div class="font-mono font-black text-sm text-white"><span id="nav-speed-val">0</span> <span class="text-[10px] text-slate-400">km/h</span></div>
+          <!-- Derecha: Velocidad | Altitud | Botón Voz | Botón Salir en la misma línea -->
+          <div class="flex items-center gap-1.5 shrink-0">
+            <div class="flex items-center gap-1.5 bg-slate-900/95 border border-slate-800 rounded-lg px-2 py-1">
+              <div class="text-center leading-none" title="Velocidad GPS">
+                <div class="font-mono font-black text-xs text-white"><span id="nav-speed-val">0</span><span class="text-[9px] text-slate-400 ml-0.5">km/h</span></div>
+              </div>
+              <div class="h-3 w-px bg-slate-700"></div>
+              <div class="text-center leading-none" title="Altitud SNM">
+                <div class="font-mono font-bold text-xs text-amber-400"><span id="nav-alt-val">--</span><span class="text-[9px] ml-0.5">m</span></div>
+              </div>
             </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div>
-              <div class="text-[9px] uppercase text-slate-400 font-bold">Altitud</div>
-              <div class="font-mono font-bold text-sm text-amber-400"><span id="nav-alt-val">--</span> <span class="text-[10px]">m</span></div>
-            </div>
+
+            <button id="btn-nav-voice-toggle" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/50 px-2 py-1 rounded-lg text-[11px] font-bold transition shrink-0" title="Activar/Silenciar voz para casco">
+              🔊<span class="sr-only"> Voz ON</span>
+            </button>
+            <button id="btn-nav-stop" class="bg-rose-600/25 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/50 px-2 py-1 rounded-lg text-[11px] font-black transition shrink-0" title="Cancelar ruta y cerrar navegación">
+              ✕<span class="sr-only"> Salir</span>
+            </button>
+
             <div style="display:none !important;" class="hidden" aria-hidden="true">
               <span id="nav-fuel-val">92</span><span id="nav-range-val">440</span><span id="nav-rem-km">340</span>
+              <button id="btn-nav-play-pause"><span>⏸️</span> <span id="nav-play-label">Pausar</span></button>
+              <button id="btn-nav-step-next">⏭️ Tramo</button>
+              <button id="btn-nav-real-gps">📡 GPS Real</button>
+              <button id="btn-nav-external-app">📲 Apps</button>
             </div>
-          </div>
-
-          <div class="flex items-center gap-1.5 ml-auto">
-            <button id="btn-nav-play-pause" style="display:none !important;" class="hidden" aria-hidden="true">
-              <span>⏸️</span> <span id="nav-play-label">Pausar</span>
-            </button>
-            <button id="btn-nav-step-next" style="display:none !important;" class="hidden" aria-hidden="true">
-              ⏭️ Tramo
-            </button>
-            <button id="btn-nav-voice-toggle" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition" title="Voz Bluetooth para casco (Web Speech API)">
-              🔊 Voz ON
-            </button>
-            <button id="btn-nav-real-gps" style="display:none !important;" class="hidden" aria-hidden="true">
-              📡 GPS Real
-            </button>
-            <button id="btn-nav-external-app" style="display:none !important;" class="hidden" aria-hidden="true">
-              📲 Apps
-            </button>
           </div>
         </div>
       </div>
@@ -10396,7 +10384,7 @@ COMMIT;`;
 
       document.getElementById('btn-nav-voice-toggle').addEventListener('click', (e) => {
         navEngine.voiceEnabled = !navEngine.voiceEnabled;
-        e.currentTarget.textContent = navEngine.voiceEnabled ? '🔊 Voz ON' : '🔇 Voz OFF';
+        e.currentTarget.innerHTML = navEngine.voiceEnabled ? '🔊<span class="sr-only"> Voz ON</span>' : '🔇<span class="sr-only"> Voz OFF</span>';
         showToast(navEngine.voiceEnabled ? 'Indicaciones por voz para casco activadas' : 'Voz silenciada', '🎧');
       });
 
@@ -12255,7 +12243,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V7
+  // MOTORUTA_MOBILE_SYNC_V8
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -13412,7 +13400,7 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
 
     const coneRotation = Math.round(heading);
     const riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
-      '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
+      '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
       '🏍️ @' + nick + (g.speedKmh > 0 ? (' · ' + g.speedKmh + ' km/h') : '') +
       '</div>' +
       '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
@@ -13493,7 +13481,7 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
           if (instrEl) instrEl.textContent = currStep.instruction;
           if (poiEl) {
             const etaMins = Math.max(1, Math.round((remKm / Math.max(speedKmh || 45, 25)) * 60));
-            poiEl.textContent = '🏁 Destino a ' + remKm.toFixed(1) + ' km · ⏱️ Llegada est. en ' + etaMins + ' min';
+            poiEl.textContent = '🏁 ' + remKm.toFixed(1) + ' km · ⏱️ ' + etaMins + ' min';
           }
         }
       }
@@ -13794,6 +13782,14 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     if (hudEl) {
       hudEl.classList.remove('hidden');
       document.body.classList.add('nav-hud-active', 'mobile-map-expanded');
+      const iconEl = document.getElementById('nav-turn-icon');
+      const nextDistEl = document.getElementById('nav-next-dist');
+      const instrEl = document.getElementById('nav-instruction-text');
+      const poiEl = document.getElementById('nav-poi-alert');
+      if (iconEl) iconEl.textContent = '🧭';
+      if (nextDistEl) nextDistEl.textContent = distKm.toFixed(1) + ' km';
+      if (instrEl) instrEl.textContent = 'Hacia ' + shortLabel;
+      if (poiEl) poiEl.textContent = '🏁 ' + distKm.toFixed(1) + ' km · ⏱️ ' + durationMin + ' min';
       setTimeout(function() { if (map) map.invalidateSize(); }, 220);
     }
     window.updateLiveDrivingHudFromGps(origLat, origLng, g.speedKmh || 0, g.accuracy || 10, g.altitude);
@@ -13893,6 +13889,17 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
   body.motoruta-course-up-active .pack-rider-pin > div {
     transform: rotate(var(--motoruta-counter-rotate, 0deg));
     transition: transform 0.45s ease-out;
+  }
+  /* Cinta Superior Unificada (Opción 1): liberar el mapa de etiquetas duplicadas durante la navegación */
+  body.nav-hud-active #map-active-route-pill,
+  body.nav-hud-active .motoruta-rider-pin-label {
+    display: none !important;
+  }
+  body.glove-mode-active #assisted-nav-hud button {
+    min-height: 34px !important;
+    min-width: 34px !important;
+    padding: 4px 8px !important;
+    font-size: 11px !important;
   }
 </style>
 </body>
