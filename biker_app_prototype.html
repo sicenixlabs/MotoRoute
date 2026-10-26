@@ -1949,16 +1949,12 @@ body.production-clean-mode #api-inspector-drawer {
     <section id="map-section-container" class="order-1 md:order-2 flex-1 w-full h-[48%] md:h-full relative overflow-hidden bg-slate-950 flex flex-col transition-all">
       <div id="map" class="flex-1 w-full z-10"></div>
 
-      <!-- Buscador Flotante de Direcciones y Rutas sobre el Mapa (Estilo Google Maps) -->
-      <div id="map-top-address-search-box" class="absolute top-2.5 left-14 right-14 sm:left-14 sm:right-auto sm:w-96 z-20 pointer-events-auto space-y-1.5">
-        <form onsubmit="event.preventDefault(); window.searchAndTraceDestinationRoute('map-search-input');" class="flex items-center bg-slate-950/95 backdrop-blur-md border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden">
-          <input type="search" id="map-search-input" placeholder="🔍 Buscar dirección o destino..." class="w-full bg-transparent px-3 py-2 text-xs text-white outline-none border-none" />
-          <button type="button" id="btn-map-clear-route" onclick="window.cancelAllActiveRoutes(true)" class="hidden bg-slate-900 hover:bg-rose-600 text-amber-300 hover:text-white font-black px-2.5 py-2 text-xs transition shrink-0 border-l border-slate-800" title="Cancelar y borrar ruta del mapa">
-            ✕
-          </button>
-          <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 text-xs transition shrink-0">
-            Ruta
-          </button>
+      <!-- Barra Flotante de Estado de Ruta sobre el Mapa (Caja de búsqueda duplicada quitada) -->
+      <div id="map-top-address-search-box" class="absolute top-2.5 left-14 right-14 sm:left-14 sm:right-auto sm:w-96 z-20 pointer-events-auto">
+        <form onsubmit="event.preventDefault(); window.searchAndTraceDestinationRoute('map-search-input');" style="display:none !important;" class="hidden" aria-hidden="true">
+          <input type="search" id="map-search-input" placeholder="🔍 Buscar dirección o destino..." class="hidden" />
+          <button type="button" id="btn-map-clear-route" onclick="window.cancelAllActiveRoutes(true)" class="hidden">✕</button>
+          <button type="submit" class="hidden">Ruta</button>
         </form>
         <!-- Barra Flotante de Modo Navegación en Movimiento y Cancelación Rápida -->
         <div id="map-active-route-pill" class="hidden flex items-center justify-between gap-1.5 bg-slate-950/95 backdrop-blur-md border border-amber-500/60 rounded-xl px-2.5 py-1.5 shadow-xl text-[11px]">
@@ -2039,44 +2035,37 @@ body.production-clean-mode #api-inspector-drawer {
           </button>
         </div>
 
-        <!-- Telemetry & Controls Cockpit Bar -->
-        <div class="pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700/90 rounded-2xl p-2.5 shadow-xl flex flex-wrap items-center justify-between gap-2 text-xs">
-          <div class="flex items-center gap-3 px-2">
+        <!-- Telemetry & Controls Cockpit Bar (Solo Velocidad, Altitud y Botón de Voz) -->
+        <div class="pointer-events-auto bg-slate-900/95 backdrop-blur-md border border-slate-700/90 rounded-2xl p-2.5 shadow-xl flex items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-4 px-2">
             <div>
               <div class="text-[9px] uppercase text-slate-400 font-bold">Velocidad</div>
-              <div class="font-mono font-black text-sm text-white"><span id="nav-speed-val">78</span> <span class="text-[10px] text-slate-400">km/h</span></div>
+              <div class="font-mono font-black text-sm text-white"><span id="nav-speed-val">0</span> <span class="text-[10px] text-slate-400">km/h</span></div>
             </div>
             <div class="h-6 w-px bg-slate-800"></div>
             <div>
               <div class="text-[9px] uppercase text-slate-400 font-bold">Altitud</div>
-              <div class="font-mono font-bold text-sm text-amber-400"><span id="nav-alt-val">1180</span> <span class="text-[10px]">m</span></div>
+              <div class="font-mono font-bold text-sm text-amber-400"><span id="nav-alt-val">--</span> <span class="text-[10px]">m</span></div>
             </div>
-            <div class="h-6 w-px bg-slate-800"></div>
-            <div>
-              <div class="text-[9px] uppercase text-slate-400 font-bold">Tanque Est.</div>
-              <div class="font-mono font-bold text-sm text-emerald-400"><span id="nav-fuel-val">92</span>% <span class="text-[10px] text-slate-400">(<span id="nav-range-val">440</span>km)</span></div>
-            </div>
-            <div class="h-6 w-px bg-slate-800 hidden sm:block"></div>
-            <div class="hidden sm:block">
-              <div class="text-[9px] uppercase text-slate-400 font-bold">Restante</div>
-              <div class="font-mono font-bold text-sm text-cyan-300"><span id="nav-rem-km">340</span> km</div>
+            <div style="display:none !important;" class="hidden" aria-hidden="true">
+              <span id="nav-fuel-val">92</span><span id="nav-range-val">440</span><span id="nav-rem-km">340</span>
             </div>
           </div>
 
           <div class="flex items-center gap-1.5 ml-auto">
-            <button id="btn-nav-play-pause" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-2.5 py-1.5 rounded-lg text-[11px] transition flex items-center gap-1">
+            <button id="btn-nav-play-pause" style="display:none !important;" class="hidden" aria-hidden="true">
               <span>⏸️</span> <span id="nav-play-label">Pausar</span>
             </button>
-            <button id="btn-nav-step-next" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1.5 rounded-lg text-[11px] transition" title="Saltar al siguiente waypoint">
+            <button id="btn-nav-step-next" style="display:none !important;" class="hidden" aria-hidden="true">
               ⏭️ Tramo
             </button>
-            <button id="btn-nav-voice-toggle" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition" title="Voz Bluetooth para casco (Web Speech API)">
+            <button id="btn-nav-voice-toggle" class="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition" title="Voz Bluetooth para casco (Web Speech API)">
               🔊 Voz ON
             </button>
-            <button id="btn-nav-real-gps" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-2 py-1.5 rounded-lg text-[11px] transition" title="Usar GPS físico del dispositivo (navigator.geolocation)">
+            <button id="btn-nav-real-gps" style="display:none !important;" class="hidden" aria-hidden="true">
               📡 GPS Real
             </button>
-            <button id="btn-nav-external-app" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition" title="Enviar ruta a Google Maps / Waze / OsmAnd">
+            <button id="btn-nav-external-app" style="display:none !important;" class="hidden" aria-hidden="true">
               📲 Apps
             </button>
           </div>
@@ -12266,7 +12255,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V6
+  // MOTORUTA_MOBILE_SYNC_V7
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
