@@ -686,8 +686,11 @@ body.production-clean-mode #api-inspector-drawer {
             box-shadow: 0 0 14px rgba(242, 184, 28, 0.25) !important;
         }
 
-        /* Barra de estado GPS en Dorado #F2B81C y Negro #050505 */
-        #prod-live-gps-bar,
+        /* Ocultar ventana flotante de Mi Ubicación con Lat/Lng en producción */
+        body.production-clean-mode #prod-live-gps-bar,
+        #prod-live-gps-bar {
+            display: none !important;
+        }
         #gps-status-bar {
             background: rgba(5, 5, 5, 0.94) !important;
             border: 1px solid rgba(242, 184, 28, 0.45) !important;
@@ -1909,7 +1912,7 @@ body.production-clean-mode #api-inspector-drawer {
       <div id="map" class="flex-1 w-full z-10"></div>
 
       <!-- Barra de Ubicación GPS Real en Producción -->
-      <div id="prod-live-gps-bar" class="absolute top-2.5 left-2.5 right-2.5 z-30 flex items-center justify-between gap-2 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 rounded-xl px-3 py-1.5 shadow-lg">
+      <div id="prod-live-gps-bar" style="display:none !important;" class="hidden absolute top-2.5 left-2.5 right-2.5 z-30 items-center justify-between gap-2 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 rounded-xl px-3 py-1.5 shadow-lg">
         <div class="flex items-center gap-2 min-w-0">
           <span id="prod-gps-status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping shrink-0"></span>
           <div class="min-w-0">
@@ -5996,6 +5999,9 @@ COMMIT;`;
         const lineCoords = route?.route_geometry?.coordinates || SEED_ROUTES_BACKUP[0].route_geometry.coordinates;
 
         const minDistToRoute = (lng, lat) => {
+          if (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lat !== null && window.MOTORUTA_REAL_GPS.lng !== null && (!appState || !appState.routeVisible)) {
+            return Number(haversineKm(lng, lat, window.MOTORUTA_REAL_GPS.lng, window.MOTORUTA_REAL_GPS.lat).toFixed(2));
+          }
           return Number(Math.min(...lineCoords.map(c => haversineKm(lng, lat, c[0], c[1]))).toFixed(2));
         };
 
@@ -6452,6 +6458,9 @@ COMMIT;`;
             }
             await this.loadGatewayConfigFromSupabase(true);
             normalizeAllDatabaseRecords();
+            if (typeof window.syncRegisteredUserAndRealGpsState === 'function') {
+              window.syncRegisteredUserAndRealGpsState();
+            }
             renderMyBookingsBanner();
             renderIncomingRequests();
             await renderHostList();
@@ -6606,7 +6615,9 @@ COMMIT;`;
           refreshCorridorAndMap();
           return;
         }
-        map = L.map('map', { zoomControl: false }).setView([-31.58, -64.75], 10);
+        const initLat = (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lat) ? window.MOTORUTA_REAL_GPS.lat : -32.9468;
+        const initLng = (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lng) ? window.MOTORUTA_REAL_GPS.lng : -60.6393;
+        map = L.map('map', { zoomControl: false }).setView([initLat, initLng], 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
         const osmDark = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -6676,20 +6687,34 @@ COMMIT;`;
         zonePolygons = [];
         poiMarkers = [];
 
+        if (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && typeof window.updateRealRiderCircleOnMap === 'function') {
+          window.updateRealRiderCircleOnMap();
+        }
+
         hosts_along_route.forEach(host => {
           const unlockedReq = DB.hostingRequests.find(
             r => (r.host_id === host.host_id || r.host_id === host.id) && r.status === 'accepted' && r.unlocked_details
           );
 
           const polyCoords = host.location_summary.public_zone_buffer.coordinates[0].map(c => [c[1], c[0]]);
-          const poly = L.polygon(polyCoords, {
-            color: unlockedReq ? '#F2B81C' : '#10b981',
-            fillColor: unlockedReq ? '#F2B81C' : '#10b981',
-            fillOpacity: 0.14,
-            weight: 1.5,
-            dashArray: '4, 4'
-          }).addTo(map);
-          zonePolygons.push(poly);
+          const isDemoCordobaBuffer = document.body.classList.contains('production-clean-mode') &&
+            polyCoords.length > 0 &&
+            polyCoords[0][0] > -32.2 && polyCoords[0][0] < -31.0 &&
+            polyCoords[0][1] > -65.5 && polyCoords[0][1] < -64.0 &&
+            (!window.MOTORUTA_REAL_GPS || !window.MOTORUTA_REAL_GPS.hasFix ||
+             Math.abs(window.MOTORUTA_REAL_GPS.lat - polyCoords[0][0]) > 0.35 ||
+             Math.abs(window.MOTORUTA_REAL_GPS.lng - polyCoords[0][1]) > 0.35);
+
+          if (!isDemoCordobaBuffer) {
+            const poly = L.polygon(polyCoords, {
+              color: unlockedReq ? '#F2B81C' : '#10b981',
+              fillColor: unlockedReq ? '#F2B81C' : '#10b981',
+              fillOpacity: 0.14,
+              weight: 1.5,
+              dashArray: '4, 4'
+            }).addTo(map);
+            zonePolygons.push(poly);
+          }
 
           const pinCoord = unlockedReq
             ? [unlockedReq.unlocked_details.exact_location.coordinates[1], unlockedReq.unlocked_details.exact_location.coordinates[0]]
@@ -7620,11 +7645,27 @@ COMMIT;`;
       const myHost = DB.hosts.find(h => h.rider_info?.user_id === DB.jwtPrincipal.sub) || DB.hosts[0];
       if (myHost) {
         const ownerNameEl = document.getElementById('host-mgr-owner-name');
-        if (ownerNameEl) ownerNameEl.textContent = `${myHost.rider_info.full_name} (${myHost.rider_info.rider_nickname})`;
+        if (ownerNameEl) ownerNameEl.textContent = `${DB.jwtPrincipal.full_name || myHost.rider_info.full_name} (@${DB.jwtPrincipal.rider_nickname || myHost.rider_info.rider_nickname})`;
         const exactCoordsEl = document.getElementById('host-mgr-exact-coords');
-        if (exactCoordsEl && myHost.exact_location?.coordinates) {
-          exactCoordsEl.textContent = `[${myHost.exact_location.coordinates.join(', ')}]`;
+        if (exactCoordsEl) {
+          if (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lat) {
+            exactCoordsEl.textContent = `[${window.MOTORUTA_REAL_GPS.lng.toFixed(6)}, ${window.MOTORUTA_REAL_GPS.lat.toFixed(6)}]`;
+          } else if (myHost.exact_location?.coordinates) {
+            exactCoordsEl.textContent = `[${myHost.exact_location.coordinates.join(', ')}]`;
+          }
         }
+      }
+      if (typeof window.syncRegisteredUserAndRealGpsState === 'function') {
+        window.syncRegisteredUserAndRealGpsState();
+      }
+      if (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && typeof window.applyRealGpsFixToApp === 'function') {
+        window.applyRealGpsFixToApp(
+          window.MOTORUTA_REAL_GPS.lat,
+          window.MOTORUTA_REAL_GPS.lng,
+          window.MOTORUTA_REAL_GPS.accuracy,
+          (window.MOTORUTA_REAL_GPS.speedKmh || 0) / 3.6,
+          window.MOTORUTA_REAL_GPS.altitude
+        );
       }
     }
 
@@ -8280,16 +8321,16 @@ COMMIT;`;
 
       function openUpsertHostModal() {
         const myHost = DB.hosts.find(h => h.rider_info?.user_id === DB.jwtPrincipal.sub);
-        document.getElementById('host-form-name').value = myHost?.rider_info?.full_name || DB.jwtPrincipal.full_name || 'Lucas Benítez';
-        document.getElementById('host-form-nick').value = myHost?.rider_info?.rider_nickname || DB.jwtPrincipal.rider_nickname || 'LoboRutero';
-        if (myHost) {
-          document.getElementById('host-form-city').value = myHost.location_summary.city;
-          document.getElementById('host-form-province').value = myHost.location_summary.province_state;
-          document.getElementById('host-form-lat').value = myHost.exact_location.coordinates[1];
-          document.getElementById('host-form-lng').value = myHost.exact_location.coordinates[0];
-          document.getElementById('host-form-phone').value = myHost.direct_phone || '+5493415550199';
-          document.getElementById('host-form-rules').value = myHost.house_rules || '';
-        }
+        const g = window.MOTORUTA_REAL_GPS || {};
+        const cityParts = String(DB.jwtPrincipal.city || 'Rosario, Santa Fe').split(',');
+        document.getElementById('host-form-name').value = DB.jwtPrincipal.full_name || myHost?.rider_info?.full_name || '';
+        document.getElementById('host-form-nick').value = DB.jwtPrincipal.rider_nickname || myHost?.rider_info?.rider_nickname || '';
+        document.getElementById('host-form-city').value = myHost?.location_summary?.city || (cityParts[0] ? cityParts[0].trim() : 'Rosario');
+        document.getElementById('host-form-province').value = myHost?.location_summary?.province_state || (cityParts[1] ? cityParts[1].trim() : 'Santa Fe');
+        document.getElementById('host-form-lat').value = (g.hasFix && g.lat) ? g.lat.toFixed(6) : (myHost?.exact_location?.coordinates?.[1] || -32.946800);
+        document.getElementById('host-form-lng').value = (g.hasFix && g.lng) ? g.lng.toFixed(6) : (myHost?.exact_location?.coordinates?.[0] || -60.639300);
+        document.getElementById('host-form-phone').value = DB.jwtPrincipal.phone_number || myHost?.direct_phone || '';
+        document.getElementById('host-form-rules').value = myHost?.house_rules || 'Cochera segura bajo techo. Avisar 30 min antes por WhatsApp.';
         document.getElementById('modal-upsert-host').classList.remove('hidden');
       }
 
@@ -9906,8 +9947,8 @@ COMMIT;`;
           fuel_pct: 96,
           gap_km: Number((idx * 0.4).toFixed(1)),
           status: m.is_me ? 'ok' : 'invited',
-          lat: Number((-31.4250 - idx * 0.004).toFixed(5)),
-          lng: Number((-64.4978 + idx * 0.004).toFixed(5))
+          lat: Number((((window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix ? window.MOTORUTA_REAL_GPS.lat : -32.9468)) - idx * 0.004).toFixed(5)),
+          lng: Number((((window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix ? window.MOTORUTA_REAL_GPS.lng : -60.6393)) + idx * 0.004).toFixed(5))
         }));
 
         const invitedCount = grp.members.filter(m => !m.is_me).length;
@@ -10215,8 +10256,8 @@ COMMIT;`;
             fuel_pct: 100,
             gap_km: 0.0,
             status: 'ok',
-            lat: -31.4250,
-            lng: -64.4978
+            lat: (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lat) ? window.MOTORUTA_REAL_GPS.lat : -32.9468,
+            lng: (window.MOTORUTA_REAL_GPS && window.MOTORUTA_REAL_GPS.hasFix && window.MOTORUTA_REAL_GPS.lng) ? window.MOTORUTA_REAL_GPS.lng : -60.6393
           }
         ];
         DB.packSession.pings = [
@@ -12136,12 +12177,126 @@ COMMIT;`;
     accuracy: null,
     speedKmh: 0,
     altitude: null,
-    heading: null,
     watchId: null,
     capWatchId: null,
     marker: null,
     accuracyCircle: null,
+    innerHaloCircle: null,
     centeredOnce: false
+  };
+
+  window.updateRealRiderCircleOnMap = function() {
+    const g = window.MOTORUTA_REAL_GPS;
+    if (!g || !g.hasFix || g.lat === null || g.lng === null) return;
+    if (typeof map === 'undefined' || !map || typeof L === 'undefined') return;
+
+    // Remove any leftover demo Córdoba zonePolygons if the user is outside Córdoba
+    if (typeof zonePolygons !== 'undefined' && Array.isArray(zonePolygons)) {
+      zonePolygons.forEach(function(p) {
+        try {
+          const b = p.getBounds && p.getBounds().getCenter();
+          if (b && Math.abs(b.lat - g.lat) > 0.35) {
+            map.removeLayer(p);
+          }
+        } catch (e) {}
+      });
+    }
+
+    // Radar radius around the user's motorcycle: scales with #input-corridor (default 2.5 km visual zone at 25km corridor, or 1.2km - 6km)
+    const corridorKm = (typeof appState !== 'undefined' && appState.corridorKm) ? Number(appState.corridorKm) : 25;
+    const zoneRadiusMeters = Math.max(1200, Math.min(corridorKm * 120, 6000));
+
+    if (!g.accuracyCircle || !map.hasLayer(g.accuracyCircle)) {
+      g.accuracyCircle = L.circle([g.lat, g.lng], {
+        radius: zoneRadiusMeters,
+        color: '#F2B81C',
+        fillColor: '#F2B81C',
+        fillOpacity: 0.14,
+        weight: 2.5,
+        dashArray: '6, 6'
+      }).addTo(map);
+    } else {
+      g.accuracyCircle.setLatLng([g.lat, g.lng]);
+      g.accuracyCircle.setRadius(zoneRadiusMeters);
+      g.accuracyCircle.setStyle({
+        color: '#F2B81C',
+        fillColor: '#F2B81C',
+        fillOpacity: 0.14,
+        weight: 2.5,
+        dashArray: '6, 6'
+      });
+    }
+
+    const innerRadiusMeters = Math.max(g.accuracy || 25, 220);
+    if (!g.innerHaloCircle || !map.hasLayer(g.innerHaloCircle)) {
+      g.innerHaloCircle = L.circle([g.lat, g.lng], {
+        radius: innerRadiusMeters,
+        color: '#F2B81C',
+        fillColor: '#F2B81C',
+        fillOpacity: 0.24,
+        weight: 1.5
+      }).addTo(map);
+    } else {
+      g.innerHaloCircle.setLatLng([g.lat, g.lng]);
+      g.innerHaloCircle.setRadius(innerRadiusMeters);
+    }
+  };
+
+  window.syncRegisteredUserAndRealGpsState = function() {
+    if (typeof DB === 'undefined') return;
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const p = DB.jwtPrincipal || {};
+    const nick = p.rider_nickname || 'MiMoto';
+    const fullName = p.full_name || nick;
+    const userBikes = Array.isArray(DB.bikes) ? DB.bikes.filter(b => b.user_id === p.sub) : [];
+    const primaryBike = userBikes.find(b => b.is_primary) || userBikes[0] || (Array.isArray(DB.bikes) ? DB.bikes.find(b => b.is_primary) || DB.bikes[0] : null);
+    const bikeLabel = primaryBike ? `${primaryBike.brand} ${primaryBike.model}` : 'Mi Moto';
+
+    // 1. Clean pre-loaded demo Córdoba booking if it does not belong to a real action by this user
+    if (document.body.classList.contains('production-clean-mode') && Array.isArray(DB.hostingRequests)) {
+      DB.hostingRequests = DB.hostingRequests.filter(function(r) {
+        const isSeedDemo = r.request_id === '550e8400-e29b-41d4-a716-446655440000' ||
+          (r.traveler_note && r.traveler_note.indexOf('Viajo desde Rosario hacia Cuyo') !== -1);
+        return !isSeedDemo;
+      });
+      if (typeof renderMyBookingsBanner === 'function') renderMyBookingsBanner();
+      if (typeof renderIncomingRequests === 'function') renderIncomingRequests();
+    }
+
+    // 2. Sync Pack Ride leader and Habitual Group leader with the registered user & real GPS
+    if (DB.packSession && Array.isArray(DB.packSession.members) && DB.packSession.members.length > 0) {
+      const leader = DB.packSession.members[0];
+      leader.nickname = nick;
+      leader.full_name = fullName;
+      leader.bike = bikeLabel;
+      if (g.hasFix && g.lat !== null && g.lng !== null) {
+        leader.lat = g.lat;
+        leader.lng = g.lng;
+        leader.speed_kmh = g.speedKmh || 0;
+      }
+    }
+    if (Array.isArray(DB.myRidingGroups)) {
+      DB.myRidingGroups.forEach(function(grp) {
+        if (Array.isArray(grp.members)) {
+          const meMember = grp.members.find(function(m) { return m.is_me; }) || grp.members[0];
+          if (meMember) {
+            meMember.is_me = true;
+            meMember.nickname = nick;
+            meMember.full_name = fullName;
+            meMember.bike = bikeLabel;
+          }
+        }
+      });
+      if (typeof renderMyHabitualGroup === 'function') renderMyHabitualGroup();
+    }
+
+    // 3. Sync Host Manager owner name & exact coordinates to registered user & real GPS
+    const ownerNameEl = document.getElementById('host-mgr-owner-name');
+    if (ownerNameEl) ownerNameEl.textContent = `${fullName} (@${nick})`;
+    const exactCoordsEl = document.getElementById('host-mgr-exact-coords');
+    if (exactCoordsEl && g.hasFix && g.lat !== null && g.lng !== null) {
+      exactCoordsEl.textContent = `[${g.lng.toFixed(6)}, ${g.lat.toFixed(6)}]`;
+    }
   };
 
   window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters) {
@@ -12155,36 +12310,13 @@ COMMIT;`;
     g.speedKmh = (typeof speedMps === 'number' && !isNaN(speedMps) && speedMps > 0) ? Math.round(speedMps * 3.6) : 0;
     g.altitude = (typeof altitudeMeters === 'number' && !isNaN(altitudeMeters)) ? Math.round(altitudeMeters) : null;
 
-    // 1. Update Top Map GPS Bar (#prod-live-gps-bar) & Bottom Spotlight Card
-    const dotEl = document.getElementById('prod-gps-status-dot');
-    const titleEl = document.getElementById('prod-gps-status-title');
-    const coordsEl = document.getElementById('prod-gps-status-coords');
+    // 1. Update diagnostic modal fields silently (top #prod-live-gps-bar stays hidden)
     const diagCoordsEl = document.getElementById('prod-diag-coords');
-    if (dotEl) dotEl.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_8px_#10b981]';
-    if (titleEl) {
-      titleEl.textContent = '🛰️ GPS Real Activo · ' + g.speedKmh + ' km/h' + (g.altitude !== null ? (' · ' + g.altitude + ' msnm') : '');
-    }
-    if (coordsEl) {
-      coordsEl.textContent = g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) + ' (Precisión ±' + g.accuracy + 'm)';
-    }
     if (diagCoordsEl) {
       diagCoordsEl.textContent = g.lat.toFixed(5) + ', ' + g.lng.toFixed(5);
     }
 
-    const spotTitle = document.getElementById('spotlight-title');
-    const spotSub = document.getElementById('spotlight-subtitle');
-    const spotStat1 = document.getElementById('spotlight-stat-1');
-    const spotLbl1 = document.getElementById('spotlight-label-1');
-    const spotStat2 = document.getElementById('spotlight-stat-2');
-    const spotLbl2 = document.getElementById('spotlight-label-2');
-    if (spotTitle) spotTitle.textContent = '🛰️ Mi Posición GPS en Tiempo Real';
-    if (spotSub) spotSub.textContent = '📍 ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5);
-    if (spotStat1) spotStat1.textContent = g.speedKmh + ' km/h';
-    if (spotLbl1) spotLbl1.textContent = 'Velocidad';
-    if (spotStat2) spotStat2.textContent = '±' + g.accuracy + ' m';
-    if (spotLbl2) spotLbl2.textContent = 'Precisión GPS';
-
-    // 2. Update SOS, Hazard & Host Coordinate Inputs so emergency/alerts use real physical GPS
+    // 2. Update SOS, Hazard & Host Coordinate Inputs so emergency/alerts/cochera use real physical GPS
     const sosLat = document.getElementById('sos-lat');
     const sosLng = document.getElementById('sos-lng');
     if (sosLat) sosLat.value = g.lat.toFixed(5);
@@ -12197,53 +12329,48 @@ COMMIT;`;
 
     const hostLat = document.getElementById('host-form-lat');
     const hostLng = document.getElementById('host-form-lng');
-    if (hostLat && hostLat.value === '-31.4180') hostLat.value = g.lat.toFixed(5);
-    if (hostLng && hostLng.value === '-64.4920') hostLng.value = g.lat.toFixed(5);
+    if (hostLat && (hostLat.value === '-31.4180' || hostLat.value === '-31.797200' || hostLat.value === '-32.946800')) {
+      hostLat.value = g.lat.toFixed(6);
+    }
+    if (hostLng && (hostLng.value === '-64.4920' || hostLng.value === '-65.006500' || hostLng.value === '-60.639300')) {
+      hostLng.value = g.lng.toFixed(6);
+    }
 
-    // 3. Update Assisted Navigation HUD if active
+    // 3. Update Assisted Navigation HUD if active (without raw lat/lng clutter)
     const navSpeedEl = document.getElementById('nav-speed-val');
     const navAltEl = document.getElementById('nav-alt-val');
     const navPoiAlert = document.getElementById('nav-poi-alert');
     if (navSpeedEl) navSpeedEl.textContent = String(g.speedKmh);
     if (navAltEl && g.altitude !== null) navAltEl.textContent = String(g.altitude);
     if (navPoiAlert && document.body.classList.contains('production-clean-mode')) {
-      navPoiAlert.textContent = '📍 Coordenadas GPS: ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) + ' (±' + g.accuracy + 'm)';
+      navPoiAlert.textContent = '🛰️ Navegación GPS activa en tiempo real (±' + g.accuracy + ' m)';
     }
 
-    // 4. Update User's Real Position on the Leaflet Map
+    // 4. Sync registered user state and draw the Golden Circle around the user's real motorcycle on the Map
+    window.syncRegisteredUserAndRealGpsState();
+
     if (typeof map !== 'undefined' && map && typeof L !== 'undefined') {
       const nick = (typeof DB !== 'undefined' && DB.jwtPrincipal && DB.jwtPrincipal.rider_nickname)
         ? DB.jwtPrincipal.rider_nickname
         : 'Mi Moto';
 
-      if (!g.accuracyCircle) {
-        g.accuracyCircle = L.circle([g.lat, g.lng], {
-          radius: Math.max(g.accuracy, 12),
-          color: '#06b6d4',
-          fillColor: '#06b6d4',
-          fillOpacity: 0.14,
-          weight: 1.5
-        }).addTo(map);
-      } else {
-        g.accuracyCircle.setLatLng([g.lat, g.lng]);
-        g.accuracyCircle.setRadius(Math.max(g.accuracy, 12));
-      }
+      window.updateRealRiderCircleOnMap();
 
       const riderPinHtml = '<div class="flex flex-col items-center">' +
-        '<div class="px-2 py-0.5 rounded-full bg-slate-950/95 text-cyan-300 border border-cyan-400 font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1">' +
-        '📍 Vos (@' + nick + ') · ' + g.speedKmh + ' km/h' +
+        '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1">' +
+        '🏍️ @' + nick + (g.speedKmh > 0 ? (' · ' + g.speedKmh + ' km/h') : '') +
         '</div>' +
-        '<div class="w-9 h-9 rounded-full bg-cyan-500 border-2 border-white text-slate-950 flex items-center justify-center font-black text-base shadow-xl real-gps-rider-dot">🏍️</div>' +
+        '<div style="background:#F2B81C;color:#050505;border:2px solid #F5F1E6;box-shadow:0 0 18px rgba(242,184,28,0.85);" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base real-gps-rider-dot">🏍️</div>' +
         '</div>';
 
       const riderIcon = L.divIcon({
         html: riderPinHtml,
         className: 'custom-pin-real-gps',
-        iconSize: [130, 56],
-        iconAnchor: [65, 44]
+        iconSize: [140, 56],
+        iconAnchor: [70, 44]
       });
 
-      if (!g.marker) {
+      if (!g.marker || !map.hasLayer(g.marker)) {
         g.marker = L.marker([g.lat, g.lng], { icon: riderIcon, zIndexOffset: 2000 }).addTo(map);
       } else {
         g.marker.setLatLng([g.lat, g.lng]);
@@ -12252,7 +12379,10 @@ COMMIT;`;
 
       if (isFirstFix || !g.centeredOnce) {
         g.centeredOnce = true;
-        map.setView([g.lat, g.lng], 15, { animate: true });
+        map.setView([g.lat, g.lng], 13, { animate: true });
+        if (typeof refreshCorridorAndMap === 'function') {
+          setTimeout(function() { refreshCorridorAndMap(); }, 80);
+        }
       }
     }
 
@@ -12278,9 +12408,10 @@ COMMIT;`;
   window.centerMapOnMyRealGps = function(showFeedback) {
     const g = window.MOTORUTA_REAL_GPS;
     if (g.hasFix && g.lat !== null && g.lng !== null && typeof map !== 'undefined' && map) {
-      map.flyTo([g.lat, g.lng], 16, { duration: 0.9 });
+      window.updateRealRiderCircleOnMap();
+      map.flyTo([g.lat, g.lng], 14, { duration: 0.8 });
       if (showFeedback && typeof showToast === 'function') {
-        showToast('Mapa centrado en tu ubicación GPS real: ' + g.lat.toFixed(5) + ', ' + g.lng.toFixed(5), '📍');
+        showToast('Mapa centrado en tu moto', '🏍️');
       }
       return;
     }
@@ -12288,12 +12419,6 @@ COMMIT;`;
   };
 
   window.startDefinitiveProductionGps = async function(userTriggered) {
-    const titleEl = document.getElementById('prod-gps-status-title');
-    const coordsEl = document.getElementById('prod-gps-status-coords');
-    if (titleEl && !window.MOTORUTA_REAL_GPS.hasFix) {
-      titleEl.textContent = '🛰️ Obteniendo señal satelital GPS de tu teléfono...';
-    }
-
     // A) Try Capacitor Native Geolocation Plugin first (Android .APK / iOS .IPA)
     try {
       const capGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
@@ -12344,16 +12469,10 @@ COMMIT;`;
             pos.coords.altitude
           );
           if (userTriggered && typeof map !== 'undefined' && map) {
-            map.flyTo([pos.coords.latitude, pos.coords.longitude], 16, { duration: 0.9 });
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { duration: 0.8 });
           }
         },
         function(err) {
-          if (titleEl && !window.MOTORUTA_REAL_GPS.hasFix) {
-            titleEl.textContent = '⚠️ Permiso de Ubicación GPS pendiente';
-          }
-          if (coordsEl && !window.MOTORUTA_REAL_GPS.hasFix) {
-            coordsEl.textContent = 'Tocá "📍 Mi Ubicación" y elegí "Permitir" en tu celular';
-          }
           if (userTriggered && typeof showToast === 'function') {
             showToast('Habilitá el permiso de Ubicación (GPS) para MotoRuta en tu teléfono', '📍');
           }
@@ -12387,23 +12506,26 @@ COMMIT;`;
       const titleDisp = document.getElementById('pack-active-title-display');
       const meetDisp = document.getElementById('pack-active-meetup-display');
       if (titleDisp) titleDisp.textContent = 'Rodada Activa en Tiempo Real';
-      if (meetDisp) meetDisp.textContent = '📍 Posición sincronizada con el GPS físico de tu celular';
+      if (meetDisp) meetDisp.textContent = '📍 Posición sincronizada con el GPS de tu celular';
       if (Array.isArray(DB.packSession.members) && DB.packSession.members.length > 1) {
         DB.packSession.members = [DB.packSession.members[0]];
       }
     }
 
-    const spotTitle = document.getElementById('spotlight-title');
-    const spotSub = document.getElementById('spotlight-subtitle');
-    if (spotTitle) spotTitle.textContent = '🛰️ Mi Posición GPS en Tiempo Real';
-    if (spotSub) spotSub.textContent = '📍 Conectando al sensor GPS de tu celular...';
-
     if (typeof appState !== 'undefined') {
       appState.routeVisible = false;
     }
+
+    window.syncRegisteredUserAndRealGpsState();
+
     setTimeout(function() {
+      window.syncRegisteredUserAndRealGpsState();
       if (typeof map !== 'undefined' && map && typeof routePolyline !== 'undefined' && routePolyline) {
         try { map.removeLayer(routePolyline); } catch (e) {}
+      }
+      if (typeof zonePolygons !== 'undefined' && Array.isArray(zonePolygons) && typeof map !== 'undefined' && map) {
+        zonePolygons.forEach(function(p) { try { map.removeLayer(p); } catch (e) {} });
+        zonePolygons.length = 0;
       }
       if (typeof packMarkers !== 'undefined' && Array.isArray(packMarkers) && typeof map !== 'undefined' && map) {
         packMarkers.forEach(function(m) { try { map.removeLayer(m); } catch (e) {} });
