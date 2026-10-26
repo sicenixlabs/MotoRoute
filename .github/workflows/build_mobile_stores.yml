@@ -23,30 +23,32 @@ jobs:
           distribution: 'temurin'
           java-version: 17
 
-      - name: Prepare Web Assets & Generate Fresh Android Project
+      - name: Prepare Web Assets & Select Newest HTML Automatically
         run: |
           mkdir -p www
           BEST_FILE=""
-          for f in biker_app_prototype.html index.html www/index.html; do
-            if [ -f "$f" ] && grep -q "MOTORUTA_MOBILE_SYNC_V4" "$f"; then
+          # 1. Priorizar el archivo que tenga el buscador de rutas y clima en vivo (V5 / fetchLiveRiderWeather)
+          for f in biker_app_prototype.html index.html www/index.html app/src/main/assets/www/index.html; do
+            if [ -f "$f" ] && grep -q "fetchLiveRiderWeather" "$f"; then
               BEST_FILE="$f"
               break
             fi
           done
+          # 2. Si no, elegir el archivo modificado en el commit más reciente (o el más grande)
           if [ -z "$BEST_FILE" ]; then
-            LATEST_TS=0
-            for f in biker_app_prototype.html index.html www/index.html; do
+            BEST_SCORE=0
+            for f in biker_app_prototype.html index.html www/index.html app/src/main/assets/www/index.html; do
               if [ -f "$f" ]; then
-                TS=$(git log -1 --format="%ct" -- "$f" 2>/dev/null || echo 0)
-                if [ "$TS" -ge "$LATEST_TS" ]; then
-                  LATEST_TS="$TS"
+                SZ=$(wc -c < "$f" 2>/dev/null || echo 0)
+                if [ "$SZ" -gt "$BEST_SCORE" ]; then
+                  BEST_SCORE="$SZ"
                   BEST_FILE="$f"
                 fi
               fi
             done
           fi
           if [ -n "$BEST_FILE" ]; then
-            echo "Using latest HTML source: $BEST_FILE"
+            echo "✅ Usando el archivo HTML más actualizado: $BEST_FILE"
             cp "$BEST_FILE" www/index.html
             cp "$BEST_FILE" index.html || true
             cp "$BEST_FILE" biker_app_prototype.html || true
@@ -120,6 +122,7 @@ jobs:
                   try {
                       if (this.bridge != null && this.bridge.getWebView() != null) {
                           this.bridge.getWebView().clearCache(true);
+                          this.bridge.getWebView().clearHistory();
                           this.bridge.getWebView().getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
                       }
                   } catch (Exception ignored) {}
