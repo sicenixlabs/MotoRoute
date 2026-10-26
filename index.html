@@ -914,13 +914,18 @@ body.production-clean-mode #api-inspector-drawer {
             <!-- Top Subtle Glow -->
             <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-56 h-32 bg-cyan-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
-            <!-- Greeting & Active Bike Subtitle -->
-            <div class="text-center space-y-0.5 relative z-10">
-              <div id="cockpit-connected-badge" class="hidden">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span> Telemetría &amp; Ruta Conectada
+            <!-- Greeting & Active Bike Subtitle + Botón Subir/Bajar Cockpit a la derecha -->
+            <div class="flex items-center justify-between gap-2 relative z-10">
+              <div class="text-left space-y-0.5 min-w-0 flex-1">
+                <div id="cockpit-connected-badge" class="hidden">
+                  <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"></span> Telemetría &amp; Ruta Conectada
+                </div>
+                <h2 id="cockpit-greeting-title" class="text-lg font-extrabold tracking-tight text-white truncate">¡Hola, LoboRutero!</h2>
+                <p id="cockpit-bike-subtitle" class="text-[11px] text-slate-400 font-medium truncate">BMW R 1250 GS Adventure · AF 234 BC</p>
               </div>
-              <h2 id="cockpit-greeting-title" class="text-lg font-extrabold tracking-tight text-white">¡Hola, LoboRutero!</h2>
-              <p id="cockpit-bike-subtitle" class="text-[11px] text-slate-400 font-medium">BMW R 1250 GS Adventure · AF 234 BC</p>
+              <button id="btn-mobile-expand-map" type="button" class="bg-slate-900/95 hover:bg-slate-800 text-cyan-300 font-bold p-2.5 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center shrink-0" title="Subir o Bajar ventana de Cockpit para liberar el mapa">
+                ↕️
+              </button>
             </div>
 
             <!-- 3D Concentric Glowing Pedestal + Sleek Motorcycle Illustration -->
@@ -1032,6 +1037,36 @@ body.production-clean-mode #api-inspector-drawer {
               </div>
             </div>
           </div>
+          <!-- BUSCADOR DE DIRECCIÓN Y TRAZADO DE RUTA ESTILO GOOGLE MAPS (OSRM + NOMINATIM) -->
+          <div id="cockpit-destination-search-card" class="midnight-glass-card p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-sm">🧭</span>
+                <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Ir a una Dirección o Destino</span>
+              </div>
+              <button type="button" id="btn-clear-custom-route" onclick="window.clearSearchedDestinationRoute()" class="hidden text-[10px] bg-slate-900 hover:bg-rose-600 text-slate-300 hover:text-white px-2 py-0.5 rounded-lg border border-slate-700 font-bold transition">
+                ✕ Quitar Ruta
+              </button>
+            </div>
+            <form id="form-search-destination-route" onsubmit="event.preventDefault(); window.searchAndTraceDestinationRoute();" class="flex items-center gap-1.5">
+              <input type="search" id="input-destination-address" placeholder="Ej: Av. Pellegrini 1500, Rosario o Alta Gracia..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-400 outline-none" />
+              <button type="submit" id="btn-submit-destination-search" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 rounded-xl text-xs transition shrink-0 shadow flex items-center gap-1">
+                <span>🔍</span>
+                <span>Trazar</span>
+              </button>
+            </form>
+            <div id="destination-search-results-list" class="hidden space-y-1.5 max-h-40 overflow-y-auto custom-scrollbar pt-1"></div>
+            <div id="destination-active-route-summary" class="hidden p-2.5 rounded-xl bg-slate-950/90 border border-amber-500/40 flex items-center justify-between gap-2 text-xs">
+              <div class="min-w-0">
+                <div id="dest-route-title" class="font-bold text-white truncate text-[11px]">Ruta trazada hacia destino</div>
+                <div id="dest-route-metrics" class="text-[11px] font-mono text-amber-400 font-bold">Calculando distancia y tiempo...</div>
+              </div>
+              <a id="dest-open-gmaps-link" href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold px-2.5 py-1.5 rounded-lg text-[10px] shrink-0 transition">
+                ↗ Google Maps
+              </a>
+            </div>
+          </div>
+
           <div class="midnight-glass-card p-3.5 space-y-2">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5">
@@ -1063,7 +1098,7 @@ body.production-clean-mode #api-inspector-drawer {
               </h3>
               <span id="corridor-results-counter" class="text-[11px] text-amber-400 font-semibold">5 encontrados</span>
             </div>
-            <button type="button" id="btn-open-hazard" class="bg-amber-500/15 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold px-2.5 py-1.5 rounded-lg text-[11px] transition flex items-center gap-1 shrink-0">
+            <button type="button" id="btn-open-hazard" class="bg-slate-900/95 hover:bg-slate-800 text-amber-300 border border-cyan-500/40 font-bold px-2.5 py-1.5 rounded-xl text-[11px] shadow-md transition flex items-center gap-1 shrink-0">
               <span>⚠️</span> Reportar Alerta Vial
             </button>
           </div>
@@ -1911,6 +1946,16 @@ body.production-clean-mode #api-inspector-drawer {
     <section id="map-section-container" class="order-1 md:order-2 flex-1 w-full h-[48%] md:h-full relative overflow-hidden bg-slate-950 flex flex-col transition-all">
       <div id="map" class="flex-1 w-full z-10"></div>
 
+      <!-- Buscador Flotante de Direcciones y Rutas sobre el Mapa (Estilo Google Maps) -->
+      <div id="map-top-address-search-box" class="absolute top-2.5 left-14 right-14 sm:left-14 sm:right-auto sm:w-80 z-20 pointer-events-auto">
+        <form onsubmit="event.preventDefault(); window.searchAndTraceDestinationRoute('map-search-input');" class="flex items-center bg-slate-950/95 backdrop-blur-md border border-amber-500/50 rounded-xl shadow-2xl overflow-hidden">
+          <input type="search" id="map-search-input" placeholder="🔍 Buscar dirección o destino..." class="w-full bg-transparent px-3 py-2 text-xs text-white outline-none border-none" />
+          <button type="submit" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-2 text-xs transition shrink-0">
+            Ruta
+          </button>
+        </form>
+      </div>
+
       <!-- Barra de Ubicación GPS Real en Producción -->
       <div id="prod-live-gps-bar" style="display:none !important;" class="hidden absolute top-2.5 left-2.5 right-2.5 z-30 items-center justify-between gap-2 bg-slate-950/90 backdrop-blur-md border border-cyan-500/40 rounded-xl px-3 py-1.5 shadow-lg">
         <div class="flex items-center gap-2 min-w-0">
@@ -2062,14 +2107,11 @@ body.production-clean-mode #api-inspector-drawer {
       </div>
 
       <!-- Quick Map Action Floating Bar -->
-      <div class="absolute bottom-5 right-5 z-20 flex flex-col gap-2">
-        <button id="btn-mobile-expand-map" type="button" class="md:hidden bg-slate-900/95 hover:bg-slate-800 text-cyan-300 font-bold p-3 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition" title="Ampliar / Reducir Mapa en Celular">
-          ↕️
-        </button>
+      <div class="absolute bottom-5 right-3.5 z-20 flex flex-col gap-2">
         <button id="btn-float-pack-ride" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black p-3 rounded-xl border border-emerald-300 shadow-xl shadow-emerald-500/20 active:scale-95 transition" title="Rodada Grupal en Vivo (Pack Ride Realtime)">
           📡
         </button>
-        <button id="btn-float-report-hazard" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black p-3 rounded-xl border border-amber-300 shadow-xl shadow-amber-500/20 active:scale-95 transition" title="Reportar Alerta Vial en Ruta (Ripio, Hielo, Sin Nafta)">
+        <button id="btn-float-report-hazard" class="bg-slate-900/95 hover:bg-slate-800 text-amber-400 font-black p-3 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition" title="Reportar Alerta Vial en Ruta (Ripio, Hielo, Sin Nafta)">
           ⚠️
         </button>
         <button id="btn-float-assisted-nav" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black p-3 rounded-xl border border-cyan-300 shadow-xl shadow-cyan-500/20 active:scale-95 transition" title="Iniciar Navegador Asistido Paso a Paso">
@@ -6651,7 +6693,7 @@ COMMIT;`;
           '🗺️ Estándar Claro (OSM)': osmStandard,
           '⛰️ Topográfico / Curvas (OpenTopo)': openTopo,
           '🛰️ Satélite (Esri Imagery)': esriSat
-        }, null, { position: 'topright', collapsed: true }).addTo(map);
+        }, null, { position: 'topleft', collapsed: true }).addTo(map);
 
         window.addEventListener('resize', () => {
           if (map) map.invalidateSize();
@@ -9331,7 +9373,7 @@ COMMIT;`;
         btnMobExpand.addEventListener('click', () => {
           const expanded = document.body.classList.toggle('mobile-map-expanded');
           setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-          showToast(expanded ? 'Mapa ampliado en pantalla móvil' : 'Vista dividida 50/50 restaurada', '📱');
+          showToast(expanded ? 'Cockpit reducido para ampliar el mapa' : 'Panel de Cockpit desplegado', '🗺️');
         });
       }
       document.getElementById('btn-focus-route').addEventListener('click', () => {
@@ -13086,6 +13128,316 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     setTimeout(moveCustomStyleAfterTailwind, 300);
   });
 })();
+</script>
+
+<style>
+  /* Asegurar que el botón de Reportar Peligro y el de Subir/Bajar Cockpit tengan el mismo fondo oscuro #0e0e0e con borde dorado #F2B81C */
+  #btn-float-report-hazard,
+  #btn-open-hazard,
+  #btn-mobile-expand-map {
+    background: #0e0e0e !important;
+    background-color: #0e0e0e !important;
+    background-image: none !important;
+    color: #F5F1E6 !important;
+    border: 1.5px solid rgba(242, 184, 28, 0.55) !important;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.85) !important;
+  }
+  #btn-float-report-hazard:hover,
+  #btn-open-hazard:hover,
+  #btn-mobile-expand-map:hover {
+    background: #1a1a1a !important;
+    border-color: #F2B81C !important;
+  }
+
+  /* Permitir que al bajar el Cockpit se libere el mapa tanto en celulares reales como en android-phone-mode */
+  body.mobile-map-expanded #map-section-container,
+  body.android-phone-mode.mobile-map-expanded section.flex-1,
+  body.android-phone-mode.mobile-map-expanded #map-section-container {
+    height: 76% !important;
+  }
+  body.mobile-map-expanded #sidebar-panel,
+  body.android-phone-mode.mobile-map-expanded #sidebar-panel {
+    height: 24% !important;
+  }
+
+  /* Separar controles de Leaflet en la esquina superior izquierda para que nunca se solapen */
+  .leaflet-top.leaflet-left {
+    top: 6px !important;
+    left: 6px !important;
+  }
+  .leaflet-top.leaflet-right {
+    top: 6px !important;
+    right: 6px !important;
+  }
+</style>
+
+<script>
+  // ============================================================================
+  // CLIMA REAL EN VIVO POR GPS (OPEN-METEO API GRATUITA SIN API KEY)
+  // Actualiza #cockpit-kpi-temp con la temperatura real de la ubicación del rider
+  // ============================================================================
+  window.MOTORUTA_WEATHER_STATE = {
+    lastFetchTs: 0,
+    lastLat: null,
+    lastLng: null,
+    tempC: null
+  };
+
+  window.fetchLiveRiderWeather = async function(lat, lng, force) {
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    const now = Date.now();
+    const st = window.MOTORUTA_WEATHER_STATE;
+    if (!force && st.lastFetchTs && (now - st.lastFetchTs < 300000)) {
+      if (st.lastLat !== null && Math.abs(st.lastLat - lat) < 0.02 && Math.abs(st.lastLng - lng) < 0.02) {
+        return;
+      }
+    }
+    st.lastFetchTs = now;
+    st.lastLat = lat;
+    st.lastLng = lng;
+
+    try {
+      const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + encodeURIComponent(lat.toFixed(4)) +
+                  '&longitude=' + encodeURIComponent(lng.toFixed(4)) +
+                  '&current_weather=true&timezone=auto';
+      const resp = await fetch(url);
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && data.current_weather && typeof data.current_weather.temperature === 'number') {
+        const tempRounded = Math.round(data.current_weather.temperature);
+        st.tempC = tempRounded;
+        const tempEl = document.getElementById('cockpit-kpi-temp');
+        if (tempEl) {
+          tempEl.textContent = tempRounded + '°C';
+        }
+      }
+    } catch (err) {
+      // Mantiene el último valor en caché si no hay señal de datos móviles en ruta
+    }
+  };
+
+  // Integrar actualización de temperatura real cuando el GPS del celular obtiene coordenadas
+  const _origApplyRealGpsFix = window.applyRealGpsFixToApp;
+  if (typeof _origApplyRealGpsFix === 'function') {
+    window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters) {
+      _origApplyRealGpsFix(lat, lng, accuracyMeters, speedMps, altitudeMeters);
+      window.fetchLiveRiderWeather(lat, lng, false);
+    };
+  }
+
+  // Disparar consulta inicial de temperatura al cargar y refrescar cada 10 minutos
+  window.addEventListener('DOMContentLoaded', function() {
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const initLat = (typeof g.lat === 'number') ? g.lat : -32.9468;
+    const initLng = (typeof g.lng === 'number') ? g.lng : -60.6393;
+    window.fetchLiveRiderWeather(initLat, initLng, true);
+    setInterval(function() {
+      const currG = window.MOTORUTA_REAL_GPS || {};
+      if (typeof currG.lat === 'number' && typeof currG.lng === 'number') {
+        window.fetchLiveRiderWeather(currG.lat, currG.lng, true);
+      }
+    }, 600000);
+  });
+
+  // ============================================================================
+  // BUSCADOR DE DIRECCIONES Y TRAZADO DE RUTA ESTILO GOOGLE MAPS (NOMINATIM + OSRM)
+  // ============================================================================
+  window.CUSTOM_DESTINATION_ROUTE = {
+    polyline: null,
+    destMarker: null,
+    lastDestination: null,
+    lastSearchResults: []
+  };
+
+  window.selectSearchResultByIndex = function(idx) {
+    const list = window.CUSTOM_DESTINATION_ROUTE.lastSearchResults || [];
+    const item = list[idx];
+    if (item) {
+      window.traceRouteToCoordinates(Number(item.lat), Number(item.lon), item.display_name || 'Destino');
+    }
+  };
+
+  window.searchAndTraceDestinationRoute = async function(sourceInputId) {
+    const sideInput = document.getElementById('input-destination-address');
+    const mapInput = document.getElementById('map-search-input');
+    const activeInput = sourceInputId ? document.getElementById(sourceInputId) : (sideInput && sideInput.value.trim() ? sideInput : mapInput);
+    const query = activeInput ? activeInput.value.trim() : '';
+
+    if (!query) {
+      if (typeof showToast === 'function') showToast('Escribí una dirección, calle o localidad para trazar la ruta', '🔍');
+      return;
+    }
+
+    if (sideInput && sideInput !== activeInput) sideInput.value = query;
+    if (mapInput && mapInput !== activeInput) mapInput.value = query;
+
+    const btnSubmit = document.getElementById('btn-submit-destination-search');
+    if (btnSubmit) btnSubmit.innerHTML = '<span>⏳</span><span>Buscando...</span>';
+
+    try {
+      const searchUrl = 'https://nominatim.openstreetmap.org/search?format=json&limit=4&countrycodes=ar,uy,cl,br,py,bo&q=' + encodeURIComponent(query);
+      const res = await fetch(searchUrl, { headers: { 'Accept-Language': 'es' } });
+      const places = await res.json();
+
+      if (!Array.isArray(places) || places.length === 0) {
+        if (typeof showToast === 'function') showToast('No encontramos esa dirección. Probá agregando la ciudad o provincia.', '⚠️');
+        if (btnSubmit) btnSubmit.innerHTML = '<span>🔍</span><span>Trazar</span>';
+        return;
+      }
+
+      window.CUSTOM_DESTINATION_ROUTE.lastSearchResults = places;
+      const resultsBox = document.getElementById('destination-search-results-list');
+      if (places.length > 1 && resultsBox) {
+        resultsBox.classList.remove('hidden');
+        resultsBox.innerHTML = places.map(function(p, idx) {
+          return '<button type="button" onclick="window.selectSearchResultByIndex(' + idx + ')" ' +
+            'class="w-full text-left p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-amber-400 text-[11px] text-white flex items-center justify-between gap-2 transition">' +
+            '<span class="truncate">📍 ' + (p.display_name || 'Ubicación') + '</span>' +
+            '<span class="text-amber-400 font-bold shrink-0">Ir →</span>' +
+            '</button>';
+        }).join('');
+      }
+
+      // Trazar inmediatamente hacia el resultado principal más relevante
+      const top = places[0];
+      await window.traceRouteToCoordinates(Number(top.lat), Number(top.lon), top.display_name || query);
+    } catch (err) {
+      if (typeof showToast === 'function') showToast('Error al buscar dirección. Verificá tu conexión a internet.', '⚠️');
+    } finally {
+      if (btnSubmit) btnSubmit.innerHTML = '<span>🔍</span><span>Trazar</span>';
+    }
+  };
+
+  window.traceRouteToCoordinates = async function(destLat, destLng, destLabel) {
+    if (typeof map === 'undefined' || !map || typeof L === 'undefined') return;
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const origLat = (typeof g.lat === 'number' && !isNaN(g.lat)) ? g.lat : -32.9468;
+    const origLng = (typeof g.lng === 'number' && !isNaN(g.lng)) ? g.lng : -60.6393;
+
+    // Limpiar ruta anterior si existía
+    if (window.CUSTOM_DESTINATION_ROUTE.polyline) {
+      try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.polyline); } catch (e) {}
+    }
+    if (window.CUSTOM_DESTINATION_ROUTE.destMarker) {
+      try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.destMarker); } catch (e) {}
+    }
+
+    let routeCoordsLatLng = [[origLat, origLng], [destLat, destLng]];
+    let distKm = haversineKm(origLng, origLat, destLng, destLat);
+    let durationMin = Math.max(1, Math.round((distKm / 55) * 60));
+
+    try {
+      const osrmUrl = 'https://router.project-osrm.org/route/v1/driving/' +
+        origLng.toFixed(6) + ',' + origLat.toFixed(6) + ';' +
+        destLng.toFixed(6) + ',' + destLat.toFixed(6) +
+        '?overview=full&geometries=geojson';
+      const r = await fetch(osrmUrl);
+      if (r.ok) {
+        const routeData = await r.json();
+        if (routeData && Array.isArray(routeData.routes) && routeData.routes.length > 0) {
+          const best = routeData.routes[0];
+          if (best.geometry && Array.isArray(best.geometry.coordinates)) {
+            routeCoordsLatLng = best.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+          }
+          if (typeof best.distance === 'number') {
+            distKm = best.distance / 1000.0;
+          }
+          if (typeof best.duration === 'number') {
+            durationMin = Math.max(1, Math.round(best.duration / 60.0));
+          }
+        }
+      }
+    } catch (osrmErr) {
+      // Si el servidor OSRM no responde, traza línea directa con distancia geodésica
+    }
+
+    // Dibujar línea de ruta en Dorado MotoRuta (#F2B81C) sobre el mapa
+    window.CUSTOM_DESTINATION_ROUTE.polyline = L.polyline(routeCoordsLatLng, {
+      color: '#F2B81C',
+      weight: 6,
+      opacity: 0.95,
+      lineCap: 'round',
+      lineJoin: 'round'
+    }).addTo(map);
+
+    const shortLabel = String(destLabel || 'Destino').split(',')[0];
+    const destPinHtml = '<div class="flex flex-col items-center">' +
+      '<div style="background:#050505;color:#F5F1E6;border:1.5px solid #F2B81C;" class="px-2 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap shadow-xl mb-1">' +
+      '🏁 ' + shortLabel + ' (' + distKm.toFixed(1) + ' km)' +
+      '</div>' +
+      '<div style="background:#D92B2B;color:#F5F1E6;border:2px solid #F5F1E6;box-shadow:0 0 16px rgba(217,43,43,0.85);" class="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm">🏁</div>' +
+      '</div>';
+
+    const destIcon = L.divIcon({
+      html: destPinHtml,
+      className: 'custom-dest-pin',
+      iconSize: [140, 52],
+      iconAnchor: [70, 42]
+    });
+
+    window.CUSTOM_DESTINATION_ROUTE.destMarker = L.marker([destLat, destLng], { icon: destIcon, zIndexOffset: 1900 }).addTo(map);
+
+    // Ajustar el mapa para mostrar toda la ruta desde la moto hasta el destino
+    map.fitBounds(window.CUSTOM_DESTINATION_ROUTE.polyline.getBounds(), { padding: [50, 50] });
+
+    // Actualizar tarjeta resumen y botón para abrir en Google Maps si desea navegación hablada externa
+    const summaryBox = document.getElementById('destination-active-route-summary');
+    const titleEl = document.getElementById('dest-route-title');
+    const metricsEl = document.getElementById('dest-route-metrics');
+    const gmapsLink = document.getElementById('dest-open-gmaps-link');
+    const clearBtn = document.getElementById('btn-clear-custom-route');
+    const resultsBox = document.getElementById('destination-search-results-list');
+
+    if (resultsBox) resultsBox.classList.add('hidden');
+    if (summaryBox) summaryBox.classList.remove('hidden');
+    if (clearBtn) clearBtn.classList.remove('hidden');
+    if (titleEl) titleEl.textContent = '🏁 ' + destLabel;
+    if (metricsEl) {
+      const hrs = Math.floor(durationMin / 60);
+      const mins = durationMin % 60;
+      const timeStr = hrs > 0 ? (hrs + ' h ' + mins + ' min') : (mins + ' min');
+      metricsEl.textContent = '🛣️ ' + distKm.toFixed(1) + ' km · ⏱️ ' + timeStr + ' en moto';
+    }
+    if (gmapsLink) {
+      gmapsLink.href = 'https://www.google.com/maps/dir/?api=1&origin=' + origLat + ',' + origLng +
+                       '&destination=' + destLat + ',' + destLng + '&travelmode=driving';
+    }
+
+    if (typeof showToast === 'function') {
+      showToast('Ruta trazada hacia ' + shortLabel + ' (' + distKm.toFixed(1) + ' km)', '🧭');
+    }
+  };
+
+  window.clearSearchedDestinationRoute = function() {
+    if (typeof map !== 'undefined' && map) {
+      if (window.CUSTOM_DESTINATION_ROUTE.polyline) {
+        try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.polyline); } catch (e) {}
+        window.CUSTOM_DESTINATION_ROUTE.polyline = null;
+      }
+      if (window.CUSTOM_DESTINATION_ROUTE.destMarker) {
+        try { map.removeLayer(window.CUSTOM_DESTINATION_ROUTE.destMarker); } catch (e) {}
+        window.CUSTOM_DESTINATION_ROUTE.destMarker = null;
+      }
+    }
+    const summaryBox = document.getElementById('destination-active-route-summary');
+    const clearBtn = document.getElementById('btn-clear-custom-route');
+    const resultsBox = document.getElementById('destination-search-results-list');
+    const sideInput = document.getElementById('input-destination-address');
+    const mapInput = document.getElementById('map-search-input');
+
+    if (summaryBox) summaryBox.classList.add('hidden');
+    if (clearBtn) clearBtn.classList.add('hidden');
+    if (resultsBox) resultsBox.classList.add('hidden');
+    if (sideInput) sideInput.value = '';
+    if (mapInput) mapInput.value = '';
+
+    if (typeof window.centerMapOnMyRealGps === 'function') {
+      window.centerMapOnMyRealGps(false);
+    }
+    if (typeof showToast === 'function') {
+      showToast('Ruta personalizada quitada del mapa', '🗺️');
+    }
+  };
 </script>
 </body>
 
