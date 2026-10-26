@@ -11630,11 +11630,13 @@ COMMIT;`;
       const sosBtn = document.getElementById('btn-open-sos');
       if (sosBtn) sosBtn.click();
       if (typeof window.showToast === 'function') {
-        window.showToast('🆘 Macro-Botón Guantes: Abriendo Auxilio Mecánico SOS 1-Toque');
+        window.showToast('🆘 Abriendo Auxilio Mecánico SOS 1-Toque', '🆘');
       }
     } else if (actionType === 'hazard') {
+      const hazBtn = document.getElementById('btn-open-hazard');
+      if (hazBtn) hazBtn.click();
       if (typeof window.showToast === 'function') {
-        window.showToast('⚠️ Alerta Vial rápida enviada a riders en radio de 25 km (Modo Guantes)');
+        window.showToast('⚠️ Reportar Alerta Vial en tu ubicación actual', '⚠️');
       }
     }
   };
@@ -11672,8 +11674,20 @@ COMMIT;`;
   };
 
   window.triggerHelmetVoiceCommandPrompt = function() {
-    window.openErgonomicsQaModal('glove');
-    window.executeHelmetVoiceIntent('Reportar ruta cortada o ripio suelto');
+    const voiceBtn = document.getElementById('btn-nav-voice-toggle');
+    if (voiceBtn) {
+      voiceBtn.click();
+    } else if (typeof window.showToast === 'function') {
+      window.showToast('🎙️ Voz para casco Bluetooth activada', '🎧');
+    }
+    if ('speechSynthesis' in window && (!window.MOTORUTA_NAV_ENGINE || window.MOTORUTA_NAV_ENGINE.voiceEnabled)) {
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Audio para casco Bluetooth activo');
+        u.lang = 'es-AR';
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
   };
 
   window.runBatteryQaSimulation = function() {
@@ -12243,7 +12257,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V8
+  // MOTORUTA_MOBILE_SYNC_V10
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -12666,18 +12680,11 @@ COMMIT;`;
        ETAPA 5: DOCK INFERIOR DE 4 MACRO-BOTONES (MODO GUANTES >= 56x56 PX)
        ====================================================================== -->
   <div id="glove-mode-bottom-dock" aria-label="Dock de Conducción Modo Guantes">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;padding:0 4px;flex-wrap:wrap;gap:6px;">
-      <div style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:800;color:#fdba74;">
-        <span>🧤 MODO GUANTES AUTOMOTRIZ ACTIVO (TARGETS ≥ 56×56 PX)</span>
-        <span id="glove-dock-profile-pill" style="background:rgba(249,115,22,0.22);border:1px solid #f97316;color:#fff;padding:2px 8px;border-radius:999px;font-size:10px;">Guante Invierno Cuero</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;font-size:11px;font-weight:800;color:#e2e8f0;">
-        <span>🏍️ Vel: <strong id="glove-dock-speed-label" style="color:#38bdf8;">0 km/h</strong></span>
-        <span>🔋 GPS: <strong id="glove-dock-gps-label" style="color:#4ade80;">Adaptativo (3.6%/h)</strong></span>
-        <button type="button" onclick="window.openErgonomicsQaModal('glove')" style="background:#334155;color:#fff;border:1px solid #94a3b8;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;min-height:36px !important;">
-          ⚙️ Configurar QA
-        </button>
-      </div>
+    <div style="display:none !important;" class="hidden" aria-hidden="true">
+      <span id="glove-dock-profile-pill">Guante Invierno Cuero</span>
+      <strong id="glove-dock-speed-label">0 km/h</strong>
+      <strong id="glove-dock-gps-label">Adaptativo (3.6%/h)</strong>
+      <button type="button" onclick="window.openErgonomicsQaModal('glove')">⚙️ Configurar QA</button>
     </div>
     <div class="glove-dock-grid">
       <button type="button" class="glove-dock-btn" onclick="window.gloveQuickAction('sos')" style="background:linear-gradient(135deg,#dc2626,#991b1b);color:#ffffff;border:2px solid #fca5a5;">
@@ -13324,21 +13331,92 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   };
 
+  // Parche de matriz de rotación inversa para L.Draggable de Leaflet:
+  // Cuando el contenedor #map está rotado (-θ) y escalado (S) en Modo Conducción,
+  // transforma el vector táctil del dedo (dx, dy) por la rotación inversa (+θ) y escala (1/S)
+  // para que arrastrar con el dedo hacia arriba/abajo/costados mueva el mapa exactamente en la dirección del dedo.
+  window.installRotatedMapDragFix = function() {
+    if (typeof L === 'undefined' || !L.Draggable || L.Draggable.prototype._motorutaRotationPatched) return;
+    L.Draggable.prototype._motorutaRotationPatched = true;
+    const _origOnMove = L.Draggable.prototype._onMove;
+    L.Draggable.prototype._onMove = function(e) {
+      const navMode = window.MOTORUTA_NAV_MODE;
+      const rotDeg = (navMode && typeof navMode.appliedRotationDeg === 'number') ? navMode.appliedRotationDeg : 0;
+      const scaleVal = (navMode && typeof navMode.appliedScale === 'number' && navMode.appliedScale > 0) ? navMode.appliedScale : 1;
+      const isMapPane = Boolean(this._element && this._element.classList && this._element.classList.contains('leaflet-map-pane'));
+
+      if (!isMapPane || (rotDeg === 0 && scaleVal === 1)) {
+        return _origOnMove.call(this, e);
+      }
+
+      if (e.touches && e.touches.length > 1) {
+        this._moved = true;
+        return;
+      }
+
+      const first = (e.touches && e.touches.length === 1 ? e.touches[0] : e);
+      const containerPoint = L.point(first.clientX, first.clientY);
+      const rawOffset = containerPoint.subtract(this._startPoint);
+
+      if (!rawOffset.x && !rawOffset.y) return;
+      if (Math.abs(rawOffset.x) + Math.abs(rawOffset.y) < (this.options.clickTolerance || 3)) return;
+
+      L.DomEvent.preventDefault(e);
+
+      if (!this._moved) {
+        this.fire('dragstart');
+        this._moved = true;
+        this._lastEvent = e;
+        L.DomUtil.addClass(document.body, 'leaflet-dragging');
+        this._lastTarget = e.target || e.srcElement;
+        if (window.SVGElementInstance && this._lastTarget instanceof SVGElementInstance) {
+          this._lastTarget = this._lastTarget.correspondingUseElement;
+        }
+        L.DomUtil.addClass(this._lastTarget, 'leaflet-drag-target');
+      }
+
+      // Matriz de rotación inversa 2D (+rotDeg) + compensación de escala (1/scaleVal)
+      const rad = rotDeg * (Math.PI / 180.0);
+      const cosA = Math.cos(rad);
+      const sinA = Math.sin(rad);
+      const adjX = (rawOffset.x * cosA - rawOffset.y * sinA) / scaleVal;
+      const adjY = (rawOffset.x * sinA + rawOffset.y * cosA) / scaleVal;
+
+      this._newPos = this._startPos.add(L.point(adjX, adjY));
+      this._moving = true;
+      L.Util.cancelAnimFrame(this._animRequest);
+      this._lastEvent = e;
+      this._animRequest = L.Util.requestAnimFrame(this._updatePosition, this, true, this._dragStartTarget);
+    };
+  };
+  window.installRotatedMapDragFix();
+
   // Aplicar o restaurar rotación del mapa según el rumbo de la moto (Course-Up como Google Maps)
   window.applyMapHeadingRotation = function(headingDeg) {
+    window.installRotatedMapDragFix();
     const mapEl = document.getElementById('map');
     if (!mapEl) return;
     const navMode = window.MOTORUTA_NAV_MODE;
+    const g = window.MOTORUTA_REAL_GPS || {};
     const cleanHeading = (typeof headingDeg === 'number' && !isNaN(headingDeg)) ? ((headingDeg % 360) + 360) % 360 : 0;
     navMode.currentHeadingDeg = cleanHeading;
 
-    if (navMode.enabled && navMode.orientation === 'heading-up' && cleanHeading !== 0) {
+    // Solo rotamos el lienzo del mapa cuando la moto está realmente en movimiento (>= 5 km/h) o cuando el usuario
+    // lo forzó explícitamente con el botón Rumbo Moto, y NO mientras explora manualmente con el dedo.
+    const isMoving = (typeof g.speedKmh === 'number' && g.speedKmh >= 5) || Boolean(navMode.forceCourseUpPreview);
+    const isUserExploring = Date.now() < (navMode.userPanPauseUntil || 0);
+
+    if (navMode.enabled && navMode.orientation === 'heading-up' && cleanHeading !== 0 && isMoving && !isUserExploring) {
+      navMode.appliedRotationDeg = cleanHeading;
+      navMode.appliedScale = 1.36;
       mapEl.style.transition = 'transform 0.45s ease-out';
       mapEl.style.transformOrigin = 'center center';
       mapEl.style.transform = 'scale(1.36) rotate(' + (-cleanHeading).toFixed(1) + 'deg)';
       document.documentElement.style.setProperty('--motoruta-counter-rotate', cleanHeading.toFixed(1) + 'deg');
       document.body.classList.add('motoruta-course-up-active');
     } else {
+      navMode.appliedRotationDeg = 0;
+      navMode.appliedScale = 1;
       mapEl.style.transition = 'transform 0.35s ease-out';
       mapEl.style.transform = 'scale(1) rotate(0deg)';
       document.documentElement.style.setProperty('--motoruta-counter-rotate', '0deg');
@@ -13350,7 +13428,9 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     const navMode = window.MOTORUTA_NAV_MODE;
     navMode.enabled = true;
     navMode.autoFollow = true;
+    navMode.userPanPauseUntil = 0;
     navMode.orientation = (navMode.orientation === 'heading-up') ? 'north-up' : 'heading-up';
+    navMode.forceCourseUpPreview = (navMode.orientation === 'heading-up');
     const btn = document.getElementById('btn-toggle-heading-up');
     if (btn) {
       btn.textContent = navMode.orientation === 'heading-up' ? '🧭 Rumbo Moto' : '⬆️ Norte Arriba';
@@ -13550,9 +13630,10 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     }
   }, true);
 
-  // Si el usuario arrastra el mapa manualmente, pausar auto-centrado por 10 segundos para dejarlo explorar
+  // Si el usuario arrastra el mapa manualmente, compensar vector táctil y pausar auto-centrado por 10 segundos para dejarlo explorar
   window.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
+      window.installRotatedMapDragFix();
       if (typeof map !== 'undefined' && map && typeof map.on === 'function') {
         map.on('dragstart', function() {
           if (window.MOTORUTA_NAV_MODE) {
@@ -13900,6 +13981,16 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     min-width: 34px !important;
     padding: 4px 8px !important;
     font-size: 11px !important;
+  }
+  body.glove-mode-active #mobile-bottom-thumb-nav .thumb-nav-item {
+    min-width: 0 !important;
+    padding: 6px 2px !important;
+    font-size: 10px !important;
+  }
+  #glove-mode-bottom-dock {
+    padding: 8px 10px !important;
+    border: 1.5px solid #F2B81C !important;
+    background: rgba(5, 5, 5, 0.96) !important;
   }
 </style>
 </body>
