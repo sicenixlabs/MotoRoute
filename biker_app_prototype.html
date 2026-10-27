@@ -873,8 +873,8 @@ body.production-clean-mode #api-inspector-drawer {
     <!-- Sidebar / Tab Panel -->
     <aside id="sidebar-panel" class="order-2 md:order-1 w-full md:w-96 lg:w-[430px] h-[52%] md:h-full bg-slate-900 border-r border-slate-800 flex flex-col z-20 shrink-0 transition-all">
       
-      <!-- Tab Buttons (Orden Estratégico: 1° Rodadas/Rutas/Garaje -> 2° Talleres -> 3° Hospedajes) -->
-      <nav class="modern-tab-bar grid grid-cols-6 border-b border-slate-800 bg-slate-900/60 p-1.5 gap-1 text-xs shrink-0">
+      <!-- Tab Buttons (5 Pestañas Principales — Mi Garage movido dentro de Mi Perfil) -->
+      <nav class="modern-tab-bar grid grid-cols-5 border-b border-slate-800 bg-slate-900/60 p-1.5 gap-1 text-xs shrink-0">
         <button id="tab-btn-map" class="tab-button flex-1 py-2 px-2 rounded-lg font-medium text-slate-300 hover:bg-slate-800 flex flex-col items-center gap-0.5 transition active-tab bg-slate-800 text-amber-400 font-bold" title="Cockpit y Radar General">
           <span class="text-base">🗺️</span>
           <span>Explorar</span>
@@ -887,7 +887,7 @@ body.production-clean-mode #api-inspector-drawer {
           <span class="text-base">🛣️</span>
           <span>Rutas</span>
         </button>
-        <button id="tab-btn-garage" class="tab-button flex-1 py-2 px-2 rounded-lg font-medium text-slate-400 hover:bg-slate-800 flex flex-col items-center gap-0.5 transition" title="1° Pilar Principal: Telemetría y Garaje">
+        <button id="tab-btn-garage" style="display:none !important;" class="hidden tab-button" aria-hidden="true" tabindex="-1" title="Mi Garage (Accesible desde Mi Perfil)">
           <span class="text-base">🔧</span>
           <span>Garaje</span>
         </button>
@@ -1323,16 +1323,21 @@ body.production-clean-mode #api-inspector-drawer {
           </div>
         </div>
 
-        <!-- VIEW: GARAJE -->
+        <!-- VIEW: GARAJE (Accesible desde Mi Perfil -> Mi Garage) -->
         <div id="view-garage" class="space-y-4 hidden">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
             <div>
-              <h2 class="text-base font-bold text-white">Mi Garaje Virtual</h2>
-              <p class="text-xs text-slate-400">Cálculo automático de rango por tanque y consumo</p>
+              <h2 class="text-base font-bold text-white flex items-center gap-1.5"><span>🏍️</span> Mi Garage Virtual</h2>
+              <p class="text-xs text-slate-400">Tu moto activa, capacidad de tanque y autonomía real</p>
             </div>
-            <button id="btn-add-bike" class="bg-amber-500 text-slate-950 text-xs font-bold px-2.5 py-1.5 rounded-lg hover:bg-amber-400 transition shadow">
-              + Agregar Moto
-            </button>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button type="button" onclick="document.getElementById('btn-open-jwt-profile').click()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-bold px-2.5 py-1.5 rounded-lg transition">
+                ← Mi Perfil
+              </button>
+              <button id="btn-add-bike" class="bg-amber-500 text-slate-950 text-xs font-bold px-2.5 py-1.5 rounded-lg hover:bg-amber-400 transition shadow">
+                + Agregar Moto
+              </button>
+            </div>
           </div>
 
           <!-- Bike Selector List -->
@@ -2149,8 +2154,8 @@ body.production-clean-mode #api-inspector-drawer {
     </section>
 
 
-    <!-- Barra Inferior Táctil para Pulgar con Guantes en Soporte de Manillar (Mobile-First Production) -->
-    <nav id="mobile-bottom-thumb-nav" class="hidden grid-cols-6 gap-1 shrink-0 z-30" aria-label="Navegación Principal de Manillar">
+    <!-- Barra Inferior Táctil para Pulgar con Guantes en Soporte de Manillar (5 Botones Principales — Mi Garage en Perfil) -->
+    <nav id="mobile-bottom-thumb-nav" class="hidden grid-cols-5 gap-1.5 shrink-0 z-30" aria-label="Navegación Principal de Manillar">
       <button type="button" data-thumb-target="tab-btn-map" onclick="window.triggerThumbTab('tab-btn-map')" class="thumb-nav-item active-thumb-tab">
         <span class="text-base leading-none">🗺️</span>
         <span>Cockpit</span>
@@ -2163,7 +2168,7 @@ body.production-clean-mode #api-inspector-drawer {
         <span class="text-base leading-none">🛣️</span>
         <span>Rutas GPX</span>
       </button>
-      <button type="button" data-thumb-target="tab-btn-garage" onclick="window.triggerThumbTab('tab-btn-garage')" class="thumb-nav-item">
+      <button type="button" data-thumb-target="tab-btn-garage" onclick="window.triggerThumbTab('tab-btn-garage')" style="display:none !important;" class="hidden thumb-nav-item" aria-hidden="true" tabindex="-1">
         <span class="text-base leading-none">🔧</span>
         <span>Garaje</span>
       </button>
@@ -2482,7 +2487,13 @@ body.production-clean-mode #api-inspector-drawer {
             <p id="auth-modal-subtitle" class="text-xs text-slate-400">Iniciá sesión con tu cuenta verificada o registrate para acceder a la plataforma</p>
           </div>
         </div>
-        <button id="modal-jwt-close" type="button" class="text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center gap-1 transition" title="Explorar Mapa sin Iniciar Sesión">✕ Explorar Mapa</button>
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="btn-header-modal-my-garage" type="button" onclick="window.openMyGarageFromProfile()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition shadow-md" title="Abrir Mi Garage y configurar mi moto">
+            <span>🏍️</span>
+            <span>Mi Garage</span>
+          </button>
+          <button id="modal-jwt-close" type="button" class="text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-bold flex items-center gap-1 transition" title="Cerrar ventana y volver al mapa">✕ Cerrar</button>
+        </div>
       </div>
 
       <!-- Navigation Tabs: 1. Iniciar Sesión | 2. Crear Cuenta | 3. Mi Perfil & Foto (Visible solo tras loguearse) -->
@@ -2747,11 +2758,18 @@ body.production-clean-mode #api-inspector-drawer {
           </div>
 
           
-          <!-- Accesos Rápidos de Cuenta en Mi Perfil (Modo Guantes movido a la barra superior) -->
-          <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2 text-xs">
-            <span class="text-slate-300 font-semibold">Suscripción y Beneficios de Cuenta:</span>
+          <!-- Accesos Rápidos de Vehículo (Mi Garage) y Suscripción dentro de Mi Perfil -->
+          <div class="p-3.5 rounded-xl bg-slate-950 border border-amber-500/40 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+            <div>
+              <span class="text-white font-bold block">🏍️ Vehículo y Configuración de Moto</span>
+              <span class="text-[11px] text-slate-400">Administrá tus motos registradas, capacidad de tanque y consumo</span>
+            </div>
             <div class="flex items-center gap-2">
-              <button type="button" onclick="document.getElementById('btn-open-pro').click()" class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-3 py-1.5 rounded-xl text-[11px] transition">
+              <button id="btn-profile-open-my-garage" type="button" onclick="window.openMyGarageFromProfile()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs transition shadow-lg flex items-center gap-1.5">
+                <span>🔧</span>
+                <span>Mi Garage</span>
+              </button>
+              <button type="button" onclick="document.getElementById('btn-open-pro').click()" class="bg-slate-800 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-3 py-2 rounded-xl text-xs transition">
                 ⭐ Plan Pro
               </button>
             </div>
@@ -2918,6 +2936,7 @@ body.production-clean-mode #api-inspector-drawer {
             <button type="button" onclick="void(0)">Parsear Geometría LineString y Publicar Ruta</button>
             <button type="button" onclick="void(0)">🧤 Modo Guantes</button>
             <button type="button" onclick="void(0)">🧤 56px: OFF</button>
+            <button type="button" onclick="void(0)">✕ Explorar Mapa</button>
           </div>
         </div>
 
@@ -7863,13 +7882,19 @@ COMMIT;`;
       let pendingVerificationUser = null;
       let pendingRegAvatarDataUrl = null;
 
+      window.openMyGarageFromProfile = function() {
+        const modal = document.getElementById('modal-jwt-session');
+        if (modal) modal.classList.add('hidden');
+        document.body.classList.remove('mobile-map-expanded');
+        const garageTabBtn = document.getElementById('tab-btn-garage');
+        if (garageTabBtn) garageTabBtn.click();
+        setTimeout(() => { if (map) map.invalidateSize(); }, 180);
+        showToast('Abriendo Mi Garage Virtual', '🏍️');
+      };
+
       function switchAuthModalTab(tabName) {
         if (DB.jwtPrincipal.is_authenticated && (tabName === 'login' || tabName === 'register')) {
           tabName = 'kyc';
-        }
-        if (tabName === 'kyc' && !DB.jwtPrincipal.is_authenticated) {
-          showToast('Primero debés iniciar sesión para ver o editar tu perfil.', '🔒');
-          tabName = 'login';
         }
         const tabsBar = document.getElementById('auth-tabs-bar');
         if (tabsBar) {
@@ -8742,7 +8767,7 @@ COMMIT;`;
       document.getElementById('btn-open-jwt-profile').addEventListener('click', () => {
         document.getElementById('select-kyc-level').value = DB.jwtPrincipal.verification_level;
         updateJwtPreview();
-        switchAuthModalTab(DB.jwtPrincipal.is_authenticated ? 'kyc' : 'login');
+        switchAuthModalTab('kyc');
         document.getElementById('modal-jwt-session').classList.remove('hidden');
       });
       document.getElementById('modal-jwt-close').addEventListener('click', () => {
@@ -12286,7 +12311,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V12
+  // MOTORUTA_MOBILE_SYNC_V13
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
