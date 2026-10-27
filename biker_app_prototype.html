@@ -12286,7 +12286,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V11
+  // MOTORUTA_MOBILE_SYNC_V12
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -14025,6 +14025,11 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     padding: 8px 10px !important;
     border: 1.5px solid #F2B81C !important;
     background: rgba(5, 5, 5, 0.96) !important;
+  }
+  /* En Modo Guantes, ocultar los botones flotantes chicos de SOS y Alerta sobre el mapa para no duplicarlos con el dock grande ni tapar el mapa */
+  body.glove-mode-active #btn-open-sos,
+  body.glove-mode-active #btn-float-report-hazard {
+    display: none !important;
   }
 </style>
 </body>
