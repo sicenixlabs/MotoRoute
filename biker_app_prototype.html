@@ -875,9 +875,9 @@ body.production-clean-mode #api-inspector-drawer {
       
       <!-- Tab Buttons (5 Pestañas Principales — Mi Garage movido dentro de Mi Perfil) -->
       <nav class="modern-tab-bar grid grid-cols-5 border-b border-slate-800 bg-slate-900/60 p-1.5 gap-1 text-xs shrink-0">
-        <button id="tab-btn-map" class="tab-button flex-1 py-2 px-2 rounded-lg font-medium text-slate-300 hover:bg-slate-800 flex flex-col items-center gap-0.5 transition active-tab bg-slate-800 text-amber-400 font-bold" title="Cockpit y Radar General">
+        <button id="tab-btn-map" class="tab-button flex-1 py-2 px-2 rounded-lg font-medium text-slate-300 hover:bg-slate-800 flex flex-col items-center gap-0.5 transition active-tab bg-slate-800 text-amber-400 font-bold" title="Mapa y Radar General">
           <span class="text-base">🗺️</span>
-          <span>Explorar</span>
+          <span>Mapa</span>
         </button>
         <button id="tab-btn-pack" class="tab-button flex-1 py-2 px-2 rounded-lg font-medium text-slate-400 hover:bg-slate-800 flex flex-col items-center gap-0.5 transition" title="1° Pilar Principal: Rodadas en Conjunto (Pack Ride en Vivo)">
           <span class="text-base">📡</span>
@@ -920,7 +920,7 @@ body.production-clean-mode #api-inspector-drawer {
                 <h2 id="cockpit-greeting-title" class="text-lg font-extrabold tracking-tight text-white truncate">¡Hola, LoboRutero!</h2>
                 <p id="cockpit-bike-subtitle" class="text-[11px] text-slate-400 font-medium truncate">BMW R 1250 GS Adventure · AF 234 BC</p>
               </div>
-              <button id="btn-mobile-expand-map" type="button" class="bg-slate-900/95 hover:bg-slate-800 text-cyan-300 font-bold p-2.5 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center shrink-0" title="Subir o Bajar ventana de Cockpit para liberar el mapa">
+              <button id="btn-mobile-expand-map" type="button" class="bg-slate-900/95 hover:bg-slate-800 text-cyan-300 font-bold p-2.5 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center shrink-0" title="Subir o Bajar panel para ampliar el Mapa">
                 ↕️
               </button>
             </div>
@@ -2158,7 +2158,7 @@ body.production-clean-mode #api-inspector-drawer {
     <nav id="mobile-bottom-thumb-nav" class="hidden grid-cols-5 gap-1.5 shrink-0 z-30" aria-label="Navegación Principal de Manillar">
       <button type="button" data-thumb-target="tab-btn-map" onclick="window.triggerThumbTab('tab-btn-map')" class="thumb-nav-item active-thumb-tab">
         <span class="text-base leading-none">🗺️</span>
-        <span>Cockpit</span>
+        <span>Mapa</span>
       </button>
       <button type="button" data-thumb-target="tab-btn-pack" onclick="window.triggerThumbTab('tab-btn-pack')" class="thumb-nav-item">
         <span class="text-base leading-none">📡</span>
@@ -2937,6 +2937,8 @@ body.production-clean-mode #api-inspector-drawer {
             <button type="button" onclick="void(0)">🧤 Modo Guantes</button>
             <button type="button" onclick="void(0)">🧤 56px: OFF</button>
             <button type="button" onclick="void(0)">✕ Explorar Mapa</button>
+            <button type="button" onclick="void(0)">🗺️ Cockpit</button>
+            <button type="button" onclick="void(0)">🗺️ Explorar</button>
           </div>
         </div>
 
@@ -5444,14 +5446,25 @@ COMMIT;`;
       routes: [
         {
           id: 'e2a1d3f4-5b6c-4d7e-8f9a-0b1c2d3e4f5a',
-          title: 'Camino de las Altas Cumbres & Valles',
-          description: 'Trayecto sinuoso con curvas de media y alta exigencia conectando Córdoba Capital, El Cóndor y Mina Clavero.',
+          title: 'Camino de las Altas Cumbres & Valles (RP 34)',
+          description: 'Trayecto sinuoso con curvas de media y alta exigencia conectando Córdoba Capital, Parador El Cóndor (2.180 msnm) y Mina Clavero en Traslasierra.',
           surface_type: 'mixed',
           difficulty: 'moderate',
           distance_km: 385.0,
           elevation_gain_m: 2180,
           route_geometry: {
             type: 'LineString',
+            region: 'Córdoba',
+            fuel_meta: { max_gap_km: 168.4, stop_name: 'YPF Parador El Cóndor (RP 34)', stop_km: 168.4 },
+            altimetry_labels: ['Cba', 'C. Paz', 'El Cóndor', 'M. Clavero', 'Nono'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Córdoba Capital por RN 20 · Autopista despejada', alt: 420, speed: 95 },
+              { icon: '↱', text: 'Desvío hacia Villa Carlos Paz y Falda del Carmen (RP E-96)', alt: 690, speed: 78 },
+              { icon: '⚠️', text: 'Ascenso Camino de las Altas Cumbres · Curvas cerradas y niebla', alt: 1580, speed: 62 },
+              { icon: '⛽', text: 'Parada sugerida: YPF Parador El Cóndor (km 168.4) · Revisar presión', alt: 2180, speed: 55 },
+              { icon: '↰', text: 'Descenso hacia Valle de Traslasierra · Precaución frenos motor', alt: 1340, speed: 68 },
+              { icon: '🏁', text: 'Llegada a Mina Clavero · Anfitrión Solidario Martín Ocampo a 400 m', alt: 915, speed: 40 }
+            ],
             coordinates: [
               [-64.1888, -31.4201],
               [-64.4978, -31.4250],
@@ -5459,6 +5472,349 @@ COMMIT;`;
               [-64.7755, -31.6182],
               [-64.9912, -31.7198],
               [-65.0048, -31.7281]
+            ]
+          }
+        },
+        {
+          id: 'a102b203-c304-4d05-8e06-f708a901b002',
+          title: 'Cruce del Paraná & Cuchillas Entrerrianas (RN 174 / RP 11)',
+          description: 'Salida desde Rosario cruzando el Puente Rosario-Victoria y los viaductos del humedal, subiendo por las lomadas entrerrianas de la RP 11 hasta Diamante y Paraná.',
+          surface_type: 'paved',
+          difficulty: 'easy',
+          distance_km: 192.0,
+          elevation_gain_m: 410,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Litoral / Rosario',
+            fuel_meta: { max_gap_km: 64.0, stop_name: 'YPF Acceso Victoria (RN 174 km 60)', stop_km: 64.0 },
+            altimetry_labels: ['Rosario', 'Pte. Paraná', 'Victoria', 'Diamante', 'Paraná'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Rosario (Cabecera Puente RN 174) · Asfalto rápido', alt: 32, speed: 85 },
+              { icon: '🌉', text: 'Cruce Puente Rosario-Victoria · Precaución viento lateral sobre el río', alt: 68, speed: 80 },
+              { icon: '➡️', text: 'Tramo de Islas y Viaductos del Delta · Sin banquina amplia', alt: 24, speed: 90 },
+              { icon: '⛽', text: 'Llegada a Victoria · Parada sugerida YPF rotonda RP 11', alt: 65, speed: 60 },
+              { icon: '↱', text: 'Lomadas Entrerrianas por RP 11 pasando por Diamante y Aldeas Alemanas', alt: 120, speed: 95 },
+              { icon: '🏁', text: 'Llegada a Parque Urquiza (Paraná) · Fin del trazado GPX', alt: 88, speed: 45 }
+            ],
+            coordinates: [
+              [-60.6393, -32.9468],
+              [-60.6922, -32.8694],
+              [-60.3950, -32.7280],
+              [-60.1547, -32.6186],
+              [-60.4310, -32.3520],
+              [-60.6395, -32.0672],
+              [-60.5238, -31.7320]
+            ]
+          }
+        },
+        {
+          id: 'b203c304-d405-4e06-9f07-a809b012c003',
+          title: 'Corredor Ribereño Rosario – San Pedro & Obligado (RN 9 / RP 1001)',
+          description: 'Clásica rodada rutera desde Rosario hacia San Nicolás, Ramallo, el sitio histórico de Vuelta de Obligado sobre las barrancas del Paraná y la costanera de San Pedro.',
+          surface_type: 'paved',
+          difficulty: 'easy',
+          distance_km: 165.0,
+          elevation_gain_m: 240,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Litoral / Rosario',
+            fuel_meta: { max_gap_km: 72.0, stop_name: 'Shell Parador Ramallo (RN 9 km 214)', stop_km: 108.0 },
+            altimetry_labels: ['Rosario', 'V. Constitución', 'San Nicolás', 'Obligado', 'San Pedro'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida Sur desde Rosario por Autopista RN 9', alt: 30, speed: 105 },
+              { icon: '➡️', text: 'Paso por Arroyo Seco y Villa Constitución', alt: 36, speed: 100 },
+              { icon: '↱', text: 'Ingreso a costanera de San Nicolás y Santuario', alt: 42, speed: 65 },
+              { icon: '⛽', text: 'Parada técnica en Ramallo · Combustible y café biker', alt: 45, speed: 80 },
+              { icon: '↰', text: 'Desvío por RP 1001 hacia Barrancas de Vuelta de Obligado', alt: 58, speed: 60 },
+              { icon: '🏁', text: 'Llegada a Costanera de San Pedro · Punto de encuentro motero', alt: 38, speed: 40 }
+            ],
+            coordinates: [
+              [-60.6393, -32.9468],
+              [-60.5085, -33.1580],
+              [-60.2190, -33.3335],
+              [-60.0560, -33.4850],
+              [-59.8080, -33.5960],
+              [-59.6669, -33.6792]
+            ]
+          }
+        },
+        {
+          id: 'c304d405-e506-4f07-8a08-b910c123d004',
+          title: 'Camino del Cuadrado, La Cumbre & Ascochinga (RP E-98 / E-66)',
+          description: 'Circuito técnico de asfalto de montaña por las Sierras Chicas: Río Ceballos, curvas enlazadas del Camino del Cuadrado, Valle Hermoso, La Cumbre y retorno por Ascochinga.',
+          surface_type: 'paved',
+          difficulty: 'moderate',
+          distance_km: 148.0,
+          elevation_gain_m: 1450,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Córdoba',
+            fuel_meta: { max_gap_km: 58.0, stop_name: 'YPF La Cumbre (RN 38)', stop_km: 86.0 },
+            altimetry_labels: ['Cba', 'R. Ceballos', 'El Cuadrado', 'La Cumbre', 'Ascochinga'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida hacia Sierras Chicas por Autovía E-53', alt: 460, speed: 90 },
+              { icon: '↱', text: 'Inicio ascenso Camino del Cuadrado (RP E-98) desde Río Ceballos', alt: 780, speed: 65 },
+              { icon: '⚠️', text: 'Zona de curvas técnicas de montaña · Asfalto con buen grip', alt: 1320, speed: 60 },
+              { icon: '↰', text: 'Bajada hacia Valle Hermoso y conexión con RN 38', alt: 1050, speed: 65 },
+              { icon: '⛽', text: 'Repostaje en YPF La Cumbre · Inicio tramo arbolado RP E-66', alt: 1140, speed: 55 },
+              { icon: '🏁', text: 'Cierre de circuito en Ascochinga y Jesús María', alt: 710, speed: 50 }
+            ],
+            coordinates: [
+              [-64.1888, -31.4201],
+              [-64.3210, -31.1660],
+              [-64.4150, -31.1320],
+              [-64.4820, -31.1165],
+              [-64.4925, -30.9822],
+              [-64.3650, -30.9610],
+              [-64.2720, -30.9920]
+            ]
+          }
+        },
+        {
+          id: 'd405e506-f607-4a08-9b09-c011d234e005',
+          title: 'Bosque Alegre, Observatorio & San Clemente (RP E-96 / S-271)',
+          description: 'Trazado clásico de curvas serranas: Falda del Carmen, ascenso al Observatorio Astrofísico de Bosque Alegre, vados y pinares de San Clemente hasta Potrero de Garay.',
+          surface_type: 'mixed',
+          difficulty: 'moderate',
+          distance_km: 134.0,
+          elevation_gain_m: 1320,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Córdoba',
+            fuel_meta: { max_gap_km: 74.0, stop_name: 'Shell Rotonda Falda del Carmen (RP C-45)', stop_km: 38.0 },
+            altimetry_labels: ['C. Paz', 'F. Carmen', 'Observatorio', 'S. Clemente', 'Potrero'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Partida desde Villa Carlos Paz hacia Falda del Carmen', alt: 640, speed: 75 },
+              { icon: '⛽', text: 'Punto de encuentro motero en rotonda Falda del Carmen', alt: 710, speed: 60 },
+              { icon: '↱', text: 'Curvas en ascenso hacia Estación Astrofísica de Bosque Alegre', alt: 1250, speed: 62 },
+              { icon: '⚠️', text: 'Bajada hacia San Clemente · Precaución ciclistas y puentes angostos', alt: 980, speed: 55 },
+              { icon: '➡️', text: 'Cruce de arroyos serranos por RP S-271 con vistas al Champaquí', alt: 890, speed: 68 },
+              { icon: '🏁', text: 'Llegada a costa del Lago Los Molinos (Potrero de Garay)', alt: 765, speed: 45 }
+            ],
+            coordinates: [
+              [-64.4978, -31.4250],
+              [-64.4605, -31.5820],
+              [-64.5460, -31.5983],
+              [-64.6215, -31.6910],
+              [-64.5480, -31.7820],
+              [-64.4320, -31.6580]
+            ]
+          }
+        },
+        {
+          id: 'e506f607-a708-4b09-8c10-d122e345f006',
+          title: 'Caracoles de Villavicencio & Uspallata (RP 52 · Mendoza)',
+          description: 'Mítica ruta de aventura mendocina con 365 curvas de ripio de alta montaña desde Las Heras y el Hotel Villavicencio hasta Cruz de Paramillos (3.000 msnm) y Uspallata.',
+          surface_type: 'gravel',
+          difficulty: 'expert',
+          distance_km: 156.0,
+          elevation_gain_m: 2390,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Cuyo & Andes',
+            fuel_meta: { max_gap_km: 112.0, stop_name: 'YPF ACA Uspallata (RN 7)', stop_km: 156.0 },
+            altimetry_labels: ['Mendoza', 'Canota', 'Villavicencio', 'Paramillos', 'Uspallata'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Mendoza / Las Heras por RP 52 hacia Monumento Canota', alt: 820, speed: 80 },
+              { icon: '↱', text: 'Ingreso a Reserva Natural Villavicencio · Fin del pavimento', alt: 1750, speed: 45 },
+              { icon: '⚠️', text: 'Inicio de los 365 Caracoles de Villavicencio · Ripio y precipicio sin guardarrail', alt: 2420, speed: 32 },
+              { icon: '🏔️', text: 'Cumbre Cruz de Paramillos (3.000 msnm) · Mirador del Aconcagua', alt: 3000, speed: 35 },
+              { icon: '↰', text: 'Descenso por minas históricas de Paramillos hacia el valle', alt: 2350, speed: 48 },
+              { icon: '🏁', text: 'Llegada a YPF Uspallata (RN 7) · Control de neumáticos y combustible', alt: 1890, speed: 40 }
+            ],
+            coordinates: [
+              [-68.8458, -32.8895],
+              [-68.8680, -32.6850],
+              [-69.0120, -32.5260],
+              [-69.0850, -32.4880],
+              [-69.2150, -32.5120],
+              [-69.3450, -32.5920]
+            ]
+          }
+        },
+        {
+          id: 'f607a708-b809-4c10-9d11-e233f456a007',
+          title: 'Cañón del Atuel, El Nihuil & Valle Grande (RP 173 · San Rafael)',
+          description: 'Recorrido escénico entre paredones rojizos, caracoles de ripio consolidado, centrales hidroeléctricas desde El Nihuil y asfalto sinuoso bordeando el río Atuel.',
+          surface_type: 'gravel',
+          difficulty: 'moderate',
+          distance_km: 128.0,
+          elevation_gain_m: 1150,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Cuyo & Andes',
+            fuel_meta: { max_gap_km: 98.0, stop_name: 'YPF Av. Balloffet (San Rafael)', stop_km: 128.0 },
+            altimetry_labels: ['S. Rafael', 'Cta. Terneros', 'El Nihuil', 'Cañón Atuel', 'V. Grande'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde San Rafael por RN 144 hacia Cuesta de los Terneros', alt: 710, speed: 90 },
+              { icon: '↱', text: 'Desvío hacia Dique El Nihuil (RP 180 / RP 173)', alt: 1320, speed: 75 },
+              { icon: '⚠️', text: 'Ingreso a los Caracoles del Cañón del Atuel · Ripio consolidado y vados secos', alt: 1260, speed: 38 },
+              { icon: '🏔️', text: 'Formaciones rocosas El Submarino y Los Jardines Colgantes', alt: 1020, speed: 35 },
+              { icon: '➡️', text: 'Retorno al asfalto en Embalse Valle Grande · Túneles excavados en roca', alt: 810, speed: 60 },
+              { icon: '🏁', text: 'Cierre de circuito en base de aventura de Valle Grande', alt: 740, speed: 45 }
+            ],
+            coordinates: [
+              [-68.3301, -34.6177],
+              [-68.6540, -34.8610],
+              [-68.6910, -35.0340],
+              [-68.5890, -34.9450],
+              [-68.5210, -34.8820],
+              [-68.4690, -34.8190]
+            ]
+          }
+        },
+        {
+          id: 'a708b809-c910-4d11-8e12-f344a567b008',
+          title: 'Cuesta del Obispo, Recta del Tin-Tin & Cachi (RP 33 / RN 40)',
+          description: 'Ascenso épico desde la Quebrada de Escoipe por la Cuesta del Obispo hasta Piedra del Molino (3.348 msnm), atravesando el Parque Nacional Los Cardones hasta Cachi.',
+          surface_type: 'mixed',
+          difficulty: 'expert',
+          distance_km: 162.0,
+          elevation_gain_m: 2640,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Noroeste (NOA)',
+            fuel_meta: { max_gap_km: 124.0, stop_name: 'YPF ACA Cachi (RN 40)', stop_km: 162.0 },
+            altimetry_labels: ['Salta', 'Chicoana', 'Escoipe', 'P. Molino', 'Cachi'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Salta Capital hacia Cerrillos y Chicoana (RP 33)', alt: 1187, speed: 80 },
+              { icon: '↱', text: 'Ingreso a Quebrada de Escoipe · Selva de yungas y puentes de cornisa', alt: 1650, speed: 55 },
+              { icon: '⚠️', text: 'Ascenso Cuesta del Obispo · Ripio en horquillas hasta el Valle Encantado', alt: 2680, speed: 35 },
+              { icon: '🏔️', text: 'Cumbre Piedra del Molino (3.348 msnm) · Capilla de piedra y viento puna', alt: 3348, speed: 40 },
+              { icon: '➡️', text: 'Recta del Tin-Tin (18 km trazados por los Incas entre cardones gigantes)', alt: 3050, speed: 90 },
+              { icon: '🏁', text: 'Empalme RN 40 y llegada a la plaza central de Cachi (YPF ACA)', alt: 2531, speed: 45 }
+            ],
+            coordinates: [
+              [-65.4117, -24.7859],
+              [-65.5340, -25.1210],
+              [-65.7290, -25.1740],
+              [-65.8520, -25.1880],
+              [-66.0120, -25.1610],
+              [-66.1650, -25.1205]
+            ]
+          }
+        },
+        {
+          id: 'b809c910-d011-4e12-9f13-a455b678c009',
+          title: 'Cuesta de Miranda & Cañón de Talampaya (RN 40 · La Rioja)',
+          description: 'Tramo legendario de la Ruta Nacional 40 completamente pavimentado con curvas balconeadas de roca colorada entre Chilecito, el paso de Famatina (2.040 msnm) y Villa Unión.',
+          surface_type: 'paved',
+          difficulty: 'moderate',
+          distance_km: 210.0,
+          elevation_gain_m: 1890,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Cuyo & Andes',
+            fuel_meta: { max_gap_km: 118.0, stop_name: 'YPF Villa Unión (RN 40)', stop_km: 118.0 },
+            altimetry_labels: ['Chilecito', 'Nonogasta', 'Cta. Miranda', 'V. Unión', 'Talampaya'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Chilecito por RN 40 con vista al Nevado de Famatina', alt: 1080, speed: 90 },
+              { icon: '↱', text: 'Ingreso al desfiladero de la Cuesta de Miranda · Asfalto escénico', alt: 1520, speed: 62 },
+              { icon: '🏔️', text: 'Mirador Bordo Atravesado (2.040 msnm) · Paredones de arenisca roja', alt: 2040, speed: 50 },
+              { icon: '⛽', text: 'Descenso a Villa Unión · Parada estratégica de combustible YPF', alt: 1240, speed: 75 },
+              { icon: '➡️', text: 'Tramo desértico por RN 76 hacia el Parque Nacional Talampaya', alt: 1310, speed: 95 },
+              { icon: '🏁', text: 'Llegada al Portal de los Farallones de Talampaya', alt: 1350, speed: 45 }
+            ],
+            coordinates: [
+              [-67.4950, -29.1619],
+              [-67.6420, -29.3180],
+              [-67.7680, -29.3420],
+              [-67.9120, -29.3390],
+              [-68.2260, -29.3150],
+              [-67.8920, -29.7860]
+            ]
+          }
+        },
+        {
+          id: 'c910d011-e112-4f13-8a14-b566c789d010',
+          title: 'Ruta de los 7 Lagos (RN 40 · San Martín a Villa La Angostura)',
+          description: 'Asfalto impecable entre bosques patagónicos de coihues y espejos glaciarios: Lácar, Machónico, Falkner, Villarino, Escondido, Correntoso y Nahuel Huapi.',
+          surface_type: 'paved',
+          difficulty: 'easy',
+          distance_km: 112.0,
+          elevation_gain_m: 1280,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Patagonia',
+            fuel_meta: { max_gap_km: 112.0, stop_name: 'YPF ACA Villa La Angostura (RN 40)', stop_km: 112.0 },
+            altimetry_labels: ['S.M. Andes', 'L. Machónico', 'L. Falkner', 'L. Espejo', 'V. Angostura'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde costanera del Lago Lácar en San Martín de los Andes (RN 40)', alt: 640, speed: 75 },
+              { icon: '↱', text: 'Ascenso y mirador del Lago Machónico · Curvas amplias asfaltadas', alt: 940, speed: 72 },
+              { icon: '🏔️', text: 'Cascada Vuliñanco y costa de los lagos Falkner y Villarino', alt: 910, speed: 65 },
+              { icon: '⚠️', text: 'Zona sombría junto a Lago Escondido · Precaución humedad/hielo temprano', alt: 860, speed: 60 },
+              { icon: '➡️', text: 'Mirador del Lago Espejo y cruce del río Ruca Malén', alt: 810, speed: 70 },
+              { icon: '🏁', text: 'Llegada a Villa La Angostura · Estación YPF ACA sobre RN 40', alt: 780, speed: 45 }
+            ],
+            coordinates: [
+              [-71.3534, -40.1579],
+              [-71.4120, -40.2890],
+              [-71.4850, -40.3540],
+              [-71.5310, -40.4820],
+              [-71.6080, -40.6120],
+              [-71.6463, -40.7617]
+            ]
+          }
+        },
+        {
+          id: 'd011e112-f213-4a14-9b15-c677d890e011',
+          title: 'Circuito Chico, Bahía López & Cerro Catedral (RP 77 · Bariloche)',
+          description: 'Curvas panorámicas sobre el lago Nahuel Huapi pasando por Llao Llao, Colonia Suiza, Punto Panorámico y ascenso asfaltado hasta la base del Cerro Catedral.',
+          surface_type: 'paved',
+          difficulty: 'easy',
+          distance_km: 68.0,
+          elevation_gain_m: 890,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Patagonia',
+            fuel_meta: { max_gap_km: 48.0, stop_name: 'YPF Km 13 Av. Bustillo (Bariloche)', stop_km: 48.0 },
+            altimetry_labels: ['Bariloche', 'Llao Llao', 'B. López', 'P. Panorámico', 'C. Catedral'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Centro Cívico Bariloche por Av. Exequiel Bustillo', alt: 770, speed: 65 },
+              { icon: '↱', text: 'Puerto Pañuelo y Hotel Llao Llao · Ingreso al bosque municipal', alt: 795, speed: 50 },
+              { icon: '🏔️', text: 'Paredones graníticos de Bahía López y puente Arroyo Angostura', alt: 785, speed: 55 },
+              { icon: '⚠️', text: 'Ascenso a Punto Panorámico (RP 77) · Vista postal del Nahuel Huapi', alt: 945, speed: 45 },
+              { icon: '↰', text: 'Paso por Colonia Suiza y desvío hacia RP 82 Lago Gutiérrez', alt: 820, speed: 60 },
+              { icon: '🏁', text: 'Ascenso final a la base del Cerro Catedral (1.030 msnm)', alt: 1030, speed: 45 }
+            ],
+            coordinates: [
+              [-71.3082, -41.1335],
+              [-71.4520, -41.1020],
+              [-71.5420, -41.0560],
+              [-71.5680, -41.0840],
+              [-71.5120, -41.1190],
+              [-71.4410, -41.1680]
+            ]
+          }
+        },
+        {
+          id: 'e112f213-a314-4b15-8c16-d788e901f012',
+          title: 'Abra del Acay — El Paso Más Alto de la RN 40 (Salta · 4.895 msnm)',
+          description: 'El desafío supremo del motoviajero en Sudamérica: une Cachi y La Poma con San Antonio de los Cobres trepando caracoles de ripio y vados de deshielo hasta los 4.895 msnm.',
+          surface_type: 'gravel',
+          difficulty: 'expert',
+          distance_km: 245.0,
+          elevation_gain_m: 3420,
+          route_geometry: {
+            type: 'LineString',
+            region: 'Noroeste (NOA)',
+            fuel_meta: { max_gap_km: 245.0, stop_name: 'YPF San Antonio de los Cobres (RN 51 / RN 40)', stop_km: 245.0 },
+            altimetry_labels: ['Cachi', 'La Poma', 'Vados Río', 'Abra Acay', 'S.A. Cobres'],
+            waypoints_meta: [
+              { icon: '⬆️', text: 'Salida desde Cachi con tanque al 100% por RN 40 Norte hacia Payogasta', alt: 2531, speed: 70 },
+              { icon: '⚠️', text: 'Paso por Los Graneros de La Poma · Último poblado antes del ascenso', alt: 3015, speed: 45 },
+              { icon: '🌊', text: 'Zona de vados del Río Calchaquí · Ripio grueso y cruces de agua de deshielo', alt: 3680, speed: 30 },
+              { icon: '🏔️', text: 'Caracoles finales hacia el Abra del Acay (4.895 msnm) · Puna extrema', alt: 4895, speed: 25 },
+              { icon: '↰', text: 'Descenso hacia la Puna salteña rumbo a Viaducto La Polvorilla', alt: 4220, speed: 40 },
+              { icon: '⛽', text: 'Llegada a San Antonio de los Cobres (3.775 msnm) · Repostaje obligatorio YPF', alt: 3775, speed: 40 }
+            ],
+            coordinates: [
+              [-66.1650, -25.1205],
+              [-66.1980, -24.8520],
+              [-66.2010, -24.7180],
+              [-66.1610, -24.4390],
+              [-66.2450, -24.3120],
+              [-66.3190, -24.2210]
             ]
           }
         }
@@ -6108,11 +6464,16 @@ COMMIT;`;
         const bike = DB.bikes.find(b => b.is_primary) || DB.bikes[0];
         const autonomyKm = Number((bike.tank_capacity_liters * bike.avg_consumption_km_l).toFixed(1));
         const safeRangeKm = Number((autonomyKm * (1 - safetyMarginPct / 100)).toFixed(1));
-        const maxGapKm = 168.4;
+        const fuelMeta = route?.route_geometry?.fuel_meta || {};
+        const maxGapKm = Number(fuelMeta.max_gap_km || 168.4);
+        const stopName = fuelMeta.stop_name || 'YPF Parador El Cóndor';
+        const stopKm = Number(fuelMeta.stop_km || 168.4);
 
         const warnings = [];
-        if (route.distance_km > safeRangeKm) {
-          warnings.push(`La ruta total (${route.distance_km} km) supera tu rango seguro con reserva del ${safetyMarginPct}% (${safeRangeKm} km). Parada obligatoria en YPF Parador El Cóndor (km 168.4).`);
+        if (maxGapKm > safeRangeKm) {
+          warnings.push(`Tramo crítico sin surtidores (${maxGapKm} km) supera tu rango seguro (${safeRangeKm} km). Llevá bidón auxiliar homologado.`);
+        } else if (route.distance_km > safeRangeKm) {
+          warnings.push(`La ruta total (${route.distance_km} km) supera tu rango seguro con reserva del ${safetyMarginPct}% (${safeRangeKm} km). Parada obligatoria en ${stopName} (km ${stopKm}).`);
         }
 
         const res = {
@@ -6128,14 +6489,14 @@ COMMIT;`;
               safe_range_km: safeRangeKm
             },
             route_distance_km: route.distance_km,
-            is_completable_without_refuel: route.distance_km <= safeRangeKm,
+            is_completable_without_refuel: route.distance_km <= safeRangeKm && maxGapKm <= safeRangeKm,
             max_gap_between_stations_km: maxGapKm,
             recommended_fuel_stops: [
               {
                 poi_id: '12f3e4d5-6c7b-4a8e-9f0d-1c2b3a4d5e6f',
-                name: 'YPF Parador El Cóndor',
-                route_kilometer_marker: 168.4,
-                estimated_tank_remaining_pct: Math.max(Math.round((1 - 168.4 / autonomyKm) * 100), 0)
+                name: stopName,
+                route_kilometer_marker: stopKm,
+                estimated_tank_remaining_pct: Math.max(Math.round((1 - stopKm / autonomyKm) * 100), 0)
               }
             ],
             warnings
@@ -6497,13 +6858,30 @@ COMMIT;`;
               DB.hosts = hostsR.data.map((h, idx) => normalizeHostRecord(h, idx));
             }
             if (routesR.ok && Array.isArray(routesR.data) && routesR.data.length > 0) {
-              DB.routes = routesR.data.map((r, idx) => ({
-                ...SEED_ROUTES_BACKUP[idx % SEED_ROUTES_BACKUP.length],
-                ...r,
-                route_geometry: (r.route_geometry && Array.isArray(r.route_geometry.coordinates))
-                  ? r.route_geometry
-                  : SEED_ROUTES_BACKUP[idx % SEED_ROUTES_BACKUP.length].route_geometry
-              }));
+              const mergedRoutes = SEED_ROUTES_BACKUP.map(seedR => {
+                const remoteMatch = routesR.data.find(rr => rr && rr.id === seedR.id);
+                if (!remoteMatch) return seedR;
+                return {
+                  ...seedR,
+                  ...remoteMatch,
+                  route_geometry: (remoteMatch.route_geometry && Array.isArray(remoteMatch.route_geometry.coordinates))
+                    ? { ...seedR.route_geometry, ...remoteMatch.route_geometry }
+                    : seedR.route_geometry
+                };
+              });
+              routesR.data.forEach(remoteR => {
+                if (remoteR && remoteR.id && !mergedRoutes.some(mr => mr.id === remoteR.id)) {
+                  mergedRoutes.push({
+                    ...SEED_ROUTES_BACKUP[0],
+                    ...remoteR,
+                    route_geometry: (remoteR.route_geometry && Array.isArray(remoteR.route_geometry.coordinates))
+                      ? remoteR.route_geometry
+                      : SEED_ROUTES_BACKUP[0].route_geometry
+                  });
+                }
+              });
+              DB.routes = mergedRoutes;
+              renderRoutesSelector();
             }
             if (poisR.ok && Array.isArray(poisR.data) && poisR.data.length > 0) {
               DB.pois = poisR.data.map((p, idx) => ({
@@ -7055,17 +7433,68 @@ COMMIT;`;
       `).join('');
     }
 
+    window.selectedRouteRegionFilter = window.selectedRouteRegionFilter || 'Todas';
+    window.setRouteRegionFilter = function(regionName) {
+      window.selectedRouteRegionFilter = regionName || 'Todas';
+      renderRoutesSelector();
+    };
+
     function renderRoutesSelector() {
       const container = document.getElementById('routes-selector-list');
       if (!container) return;
-      container.innerHTML = DB.routes.map(r => {
-        const active = r.id === appState.selectedRouteId;
-        return `
-          <button type="button" onclick="selectRoute('${r.id}')" class="px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition ${active ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">
-            🛣️ ${r.title} (${r.distance_km} km)
-          </button>
-        `;
-      }).join('');
+      const activeRegion = window.selectedRouteRegionFilter || 'Todas';
+      const regions = ['Todas', 'Litoral / Rosario', 'Córdoba', 'Cuyo & Andes', 'Noroeste (NOA)', 'Patagonia'];
+      const filteredRoutes = activeRegion === 'Todas'
+        ? DB.routes
+        : DB.routes.filter(r => (r.route_geometry?.region || 'Córdoba') === activeRegion);
+
+      const surfaceLabelMap = { paved: '🛣️ Asfalto', gravel: '🪨 Ripio', mixed: '⛰️ Mixto', dirt: '🏜️ Tierra' };
+      const diffLabelMap = { easy: 'Fácil', moderate: 'Moderada', expert: 'Experto' };
+
+      const regionPillsHtml = `
+        <div class="w-full flex items-center justify-between mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400">📍 Base Semilla GPX Argentina (${DB.routes.length} trazados verificados)</span>
+          <span class="text-[10px] text-slate-400 font-mono">${filteredRoutes.length} visibles</span>
+        </div>
+        <div class="w-full flex flex-wrap gap-1 mb-2 pb-2 border-b border-slate-800">
+          ${regions.map(reg => {
+            const isRegActive = reg === activeRegion;
+            const count = reg === 'Todas' ? DB.routes.length : DB.routes.filter(r => (r.route_geometry?.region || 'Córdoba') === reg).length;
+            return `<button type="button" onclick="window.setRouteRegionFilter('${reg}')" class="px-2 py-1 rounded-md text-[10px] font-bold transition ${isRegActive ? 'bg-amber-500 text-slate-950 shadow' : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-amber-500/40'}">${reg} (${count})</button>`;
+          }).join('')}
+        </div>
+      `;
+
+      const routeCardsHtml = `
+        <div class="w-full grid grid-cols-1 gap-1.5 max-h-56 overflow-y-auto pr-1">
+          ${filteredRoutes.map(r => {
+            const active = r.id === appState.selectedRouteId;
+            const reg = r.route_geometry?.region || 'Argentina';
+            const surf = surfaceLabelMap[r.surface_type] || '🛣️ Mixto';
+            const diff = diffLabelMap[r.difficulty] || 'Moderada';
+            return `
+              <button type="button" onclick="selectRoute('${r.id}')" class="w-full text-left px-3 py-2 rounded-xl text-xs transition border flex items-center justify-between gap-2 ${active ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow' : 'bg-slate-900/90 text-slate-200 border-slate-800 hover:border-amber-500/40 hover:bg-slate-800'}">
+                <div class="min-w-0 flex-1">
+                  <div class="truncate font-bold">${r.title}</div>
+                  <div class="text-[10px] ${active ? 'text-slate-900 font-semibold' : 'text-slate-400'} flex items-center gap-2 mt-0.5">
+                    <span>📍 ${reg}</span>
+                    <span>·</span>
+                    <span>${surf}</span>
+                    <span>·</span>
+                    <span>Dif: ${diff}</span>
+                  </div>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-extrabold text-xs">${r.distance_km} km</div>
+                  <div class="text-[10px] ${active ? 'text-slate-900 font-bold' : 'text-amber-400'}">+${r.elevation_gain_m} m</div>
+                </div>
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+
+      container.innerHTML = regionPillsHtml + routeCardsHtml;
 
       const curr = DB.routes.find(r => r.id === appState.selectedRouteId) || DB.routes[0];
       if (!curr) return;
@@ -7073,7 +7502,13 @@ COMMIT;`;
       document.getElementById('route-card-desc').textContent = curr.description;
       document.getElementById('route-stat-km').textContent = `${curr.distance_km} km`;
       document.getElementById('route-stat-ele').textContent = `${curr.elevation_gain_m} m`;
-      document.getElementById('route-card-Difficulty').textContent = `Dificultad ${String(curr.difficulty || 'moderate').toUpperCase()} · Superficie ${String(curr.surface_type || 'mixed').toUpperCase()}`;
+      const regBadge = document.getElementById('route-card-badge');
+      if (regBadge) {
+        regBadge.textContent = `⭐ ${curr.route_geometry?.region || 'Ruta Verificada'}`;
+      }
+      const surfText = surfaceLabelMap[curr.surface_type] || String(curr.surface_type || 'mixed').toUpperCase();
+      const diffText = diffLabelMap[curr.difficulty] || String(curr.difficulty || 'moderate').toUpperCase();
+      document.getElementById('route-card-Difficulty').textContent = `Dificultad ${diffText} · ${surfText}`;
     }
 
     async function selectRoute(routeId) {
@@ -9402,7 +9837,7 @@ COMMIT;`;
         btnMobExpand.addEventListener('click', () => {
           const expanded = document.body.classList.toggle('mobile-map-expanded');
           setTimeout(() => { if (map) map.invalidateSize(); }, 220);
-          showToast(expanded ? 'Cockpit reducido para ampliar el mapa' : 'Panel de Cockpit desplegado', '🗺️');
+          showToast(expanded ? 'Panel reducido para ampliar el Mapa' : 'Panel desplegado', '🗺️');
         });
       }
       document.getElementById('btn-focus-route').addEventListener('click', () => {
@@ -9464,7 +9899,7 @@ COMMIT;`;
         buildWaypointsFromRoute() {
           const curr = DB.routes.find(r => r.id === appState.selectedRouteId) || DB.routes[0];
           const coords = curr.route_geometry.coordinates;
-          const labels = [
+          const defaultLabels = [
             { icon: '⬆️', text: 'Salida desde Córdoba Capital por RN 20 · Autopista despejada', alt: 420, speed: 95 },
             { icon: '↱', text: 'Desvío hacia Villa Carlos Paz y Falda del Carmen (RP E-96)', alt: 690, speed: 78 },
             { icon: '⚠️', text: 'Ascenso Camino de las Altas Cumbres · Curvas cerradas y niebla', alt: 1580, speed: 62 },
@@ -9472,6 +9907,9 @@ COMMIT;`;
             { icon: '↰', text: 'Descenso hacia Valle de Traslasierra · Precaución frenos motor', alt: 1340, speed: 68 },
             { icon: '🏁', text: 'Llegada a Mina Clavero · Anfitrión Solidario Martín Ocampo a 400 m', alt: 915, speed: 40 }
           ];
+          const labels = (Array.isArray(curr.route_geometry?.waypoints_meta) && curr.route_geometry.waypoints_meta.length > 0)
+            ? curr.route_geometry.waypoints_meta
+            : defaultLabels;
           this.waypoints = coords.map((c, idx) => {
             const meta = labels[idx % labels.length];
             return {
@@ -12311,7 +12749,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V13
+  // MOTORUTA_MOBILE_SYNC_V15
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
