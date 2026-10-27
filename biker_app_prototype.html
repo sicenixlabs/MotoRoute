@@ -425,7 +425,6 @@ body.android-phone-mode nav.modern-tab-bar {
 
 
 /* === LIMPIEZA VISUAL DE INTERFAZ PARA USUARIO FINAL (8 PUNTOS APROBADOS) === */
-body.production-clean-mode #btn-quick-glove-toggle,
 body.production-clean-mode #btn-open-pro,
 body.production-clean-mode #header-role-toggle-box,
 body.production-clean-mode #header-red-activa-badge,
@@ -791,9 +790,7 @@ body.production-clean-mode #api-inspector-drawer {
           <button id="btn-open-ergonomics-qa" type="button" onclick="window.openErgonomicsQaModal('glove')" class="inline-flex items-center gap-1.5 bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-semibold border border-orange-500/40 transition" title="UX/UI Automotriz: Modo Guantes 56px, Alto Contraste 1000 Nits, Bloqueo >15 km/h y QA de Batería GPS">
             🧤 Modo Guantes &amp; QA
           </button>
-          <button id="btn-quick-glove-toggle" type="button" onclick="window.toggleGloveModeQuick()" class="inline-flex items-center gap-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-semibold border border-amber-500/40 transition" title="Activar/Desactivar Modo Guantes 56px con 1 toque">
-            🧤 56px: OFF
-          </button>
+
           <button id="btn-open-legal-security" type="button" class="inline-flex items-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-semibold border border-emerald-500/40 transition" title="Centro Legal CCyC, Privacidad Ley 25.326 (AAIP) y Escudo AppSec">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
             <span>🛡️ Legal &amp; AppSec</span>
@@ -821,10 +818,10 @@ body.production-clean-mode #api-inspector-drawer {
         </button>
       </div>
 
-      <!-- SOS Emergency Button -->
-      <button id="btn-open-sos" class="sos-pulse bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 sm:px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 shadow-md transition">
-        <span>🆘</span>
-        <span class="hidden lg:inline">Auxilio</span> SOS
+      <!-- Botón de Modo Guantes (en la barra superior junto al Perfil, además de activarse solo en movimiento) -->
+      <button id="btn-quick-glove-toggle" type="button" onclick="window.toggleGloveModeQuick()" class="bg-slate-900 hover:bg-slate-800 text-amber-400 border border-amber-500/50 font-bold px-2.5 sm:px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md transition" title="Activar/Desactivar Modo Guantes (se activa automáticamente cuando la moto empieza a moverse)">
+        <span>🧤</span>
+        <span>Guantes: OFF</span><span class="sr-only"> 56px: OFF</span>
       </button>
 
       <!-- API Console Toggle (Hidden in Production UI) -->
@@ -2104,18 +2101,21 @@ body.production-clean-mode #api-inspector-drawer {
         </div>
       </div>
 
-      <!-- Quick Map Action Floating Bar -->
+      <!-- Quick Map Action Floating Bar (SOS arriba de Alerta con idéntico tamaño) -->
       <div class="absolute bottom-5 right-3.5 z-20 flex flex-col gap-2">
         <button id="btn-float-pack-ride" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black p-3 rounded-xl border border-emerald-300 shadow-xl shadow-emerald-500/20 active:scale-95 transition" title="Rodada Grupal en Vivo (Pack Ride Realtime)">
           📡
         </button>
-        <button id="btn-float-report-hazard" class="bg-slate-900/95 hover:bg-slate-800 text-amber-400 font-black p-3 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition" title="Reportar Alerta Vial en Ruta (Ripio, Hielo, Sin Nafta)">
+        <button id="btn-open-sos" class="sos-pulse bg-rose-600 hover:bg-rose-500 text-white font-black w-11 h-11 p-3 rounded-xl border border-white shadow-xl active:scale-95 transition flex items-center justify-center text-base leading-none" title="Emitir Alerta de Auxilio Mecánico SOS 24h">
+          <span>🆘</span><span class="sr-only"> Auxilio SOS</span>
+        </button>
+        <button id="btn-float-report-hazard" class="bg-slate-900/95 hover:bg-slate-800 text-amber-400 font-black w-11 h-11 p-3 rounded-xl border border-cyan-500/40 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center text-base leading-none" title="Reportar Alerta Vial en Ruta (Ripio, Hielo, Sin Nafta)">
           ⚠️
         </button>
         <button id="btn-float-assisted-nav" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black p-3 rounded-xl border border-cyan-300 shadow-xl shadow-cyan-500/20 active:scale-95 transition" title="Iniciar Navegador Asistido Paso a Paso">
           🧭
         </button>
-        <button id="btn-recenter-map" class="bg-slate-900/90 hover:bg-slate-800 text-white p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition" title="Centrar mapa en mi ubicación GPS real">
+        <button id="btn-recenter-map" class="bg-slate-900/90 hover:bg-slate-800 text-white w-11 h-11 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition flex items-center justify-center text-base leading-none" title="Centrar mapa en mi ubicación GPS real">
           🎯
         </button>
         <button id="btn-toggle-route-layer" class="bg-slate-900/90 hover:bg-slate-800 text-amber-400 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md active:scale-95 transition" title="Activar/Desactivar Geometría LineString">
@@ -2747,13 +2747,10 @@ body.production-clean-mode #api-inspector-drawer {
           </div>
 
           
-          <!-- Accesos Rápidos de Preferencias en Mi Perfil -->
+          <!-- Accesos Rápidos de Cuenta en Mi Perfil (Modo Guantes movido a la barra superior) -->
           <div class="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-2 text-xs">
-            <span class="text-slate-300 font-semibold">Ajustes Rápidos de Pantalla y Cuenta:</span>
+            <span class="text-slate-300 font-semibold">Suscripción y Beneficios de Cuenta:</span>
             <div class="flex items-center gap-2">
-              <button type="button" onclick="window.toggleGloveModeQuick()" class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-300 border border-amber-500/40 font-bold px-3 py-1.5 rounded-xl text-[11px] transition">
-                🧤 Modo Guantes
-              </button>
               <button type="button" onclick="document.getElementById('btn-open-pro').click()" class="bg-amber-500/20 hover:bg-amber-500 text-amber-300 hover:text-slate-950 border border-amber-500/40 font-bold px-3 py-1.5 rounded-xl text-[11px] transition">
                 ⭐ Plan Pro
               </button>
@@ -2919,6 +2916,8 @@ body.production-clean-mode #api-inspector-drawer {
             <button type="button" onclick="void(0)">🤝 Pagar en Mercado Pago Web</button>
             <button type="button" onclick="void(0)">🔔 Simular que Amigo Crea Rodada</button>
             <button type="button" onclick="void(0)">Parsear Geometría LineString y Publicar Ruta</button>
+            <button type="button" onclick="void(0)">🧤 Modo Guantes</button>
+            <button type="button" onclick="void(0)">🧤 56px: OFF</button>
           </div>
         </div>
 
@@ -11442,9 +11441,12 @@ COMMIT;`;
 
     const quickBtn = document.getElementById('btn-quick-glove-toggle');
     if (quickBtn) {
-      quickBtn.innerHTML = ergoState.gloveModeEnabled ? '🧤 56px: ON' : '🧤 56px: OFF';
-      quickBtn.style.background = ergoState.gloveModeEnabled ? '#ea580c' : 'rgba(249,115,22,0.16)';
-      quickBtn.style.color = ergoState.gloveModeEnabled ? '#ffffff' : '#fdba74';
+      quickBtn.innerHTML = ergoState.gloveModeEnabled
+        ? '<span>🧤</span><span>Guantes: ON</span><span class="sr-only"> 56px: ON</span>'
+        : '<span>🧤</span><span>Guantes: OFF</span><span class="sr-only"> 56px: OFF</span>';
+      quickBtn.style.background = ergoState.gloveModeEnabled ? '#F2B81C' : '#0e0e0e';
+      quickBtn.style.color = ergoState.gloveModeEnabled ? '#050505' : '#F2B81C';
+      quickBtn.style.borderColor = ergoState.gloveModeEnabled ? '#F5F1E6' : 'rgba(242, 184, 28, 0.55)';
     }
 
     const profilePill = document.getElementById('glove-dock-profile-pill');
@@ -11568,15 +11570,42 @@ COMMIT;`;
 
   window.toggleGloveModeQuick = function() {
     ergoState.gloveModeEnabled = !ergoState.gloveModeEnabled;
+    // Si el usuario lo apaga manualmente mientras va en movimiento, respetamos su decisión hasta la próxima parada
+    if (!ergoState.gloveModeEnabled && Number(ergoState.simulatedSpeedKmh || 0) >= 5) {
+      ergoState.manualOffDuringMotion = true;
+    } else if (ergoState.gloveModeEnabled) {
+      ergoState.manualOffDuringMotion = false;
+    }
     saveErgoState();
     applyErgonomicsDOM();
     if (typeof window.showToast === 'function') {
       window.showToast(
         ergoState.gloveModeEnabled
-          ? '🧤 Modo Guantes 56×56 px ACTIVADO (Dock de 4 botones + targets gigantes)'
+          ? '🧤 Modo Guantes ACTIVADO'
           : '🧤 Modo Guantes desactivado'
       );
     }
+  };
+
+  // Activación automática del Modo Guantes cuando el GPS detecta que la moto comienza a moverse (>= 5 km/h)
+  window.syncGloveModeWithRealBikeMotion = function(speedKmh) {
+    const cleanSpeed = (typeof speedKmh === 'number' && !isNaN(speedKmh) && speedKmh >= 0) ? speedKmh : 0;
+    ergoState.simulatedSpeedKmh = cleanSpeed;
+    if (cleanSpeed < 3) {
+      ergoState.manualOffDuringMotion = false;
+      enforceMotionKeyboardLock();
+      return;
+    }
+    if (cleanSpeed >= 5 && !ergoState.gloveModeEnabled && !ergoState.manualOffDuringMotion) {
+      ergoState.gloveModeEnabled = true;
+      saveErgoState();
+      applyErgonomicsDOM();
+      if (typeof window.showToast === 'function') {
+        window.showToast('🧤 Movimiento detectado (' + Math.round(cleanSpeed) + ' km/h): Modo Guantes activado automáticamente', '🏍️');
+      }
+      return;
+    }
+    enforceMotionKeyboardLock();
   };
 
   window.toggleSunlightContrastMode = function() {
@@ -12257,7 +12286,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V10
+  // MOTORUTA_MOBILE_SYNC_V11
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -13508,6 +13537,11 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     const navMode = window.MOTORUTA_NAV_MODE;
     const hasCustomRoute = Boolean(custom && custom.polyline && custom.destLat !== null);
     const hasGpxRoute = Boolean(typeof appState !== 'undefined' && appState.routeVisible && typeof routePolyline !== 'undefined' && routePolyline);
+
+    // Activar automáticamente el Modo Guantes apenas el GPS detecta que la moto comienza a moverse (>= 5 km/h)
+    if (typeof window.syncGloveModeWithRealBikeMotion === 'function') {
+      window.syncGloveModeWithRealBikeMotion(speedKmh);
+    }
 
     // Si la moto se pone en movimiento (>= 6 km/h) y hay una ruta activa, activar seguimiento estilo Google Maps automáticamente
     if ((hasCustomRoute || hasGpxRoute) && speedKmh >= 6 && !navMode.enabled) {
