@@ -7062,9 +7062,8 @@ COMMIT;`;
         map = L.map('map', { zoomControl: false }).setView([initLat, initLng], 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
-        const osmDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
-          subdomains: 'abcd',
+        const osmDark = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
           maxZoom: 19,
           className: 'dark-map-tiles'
         });
@@ -15103,9 +15102,10 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
      1. Eliminar el filtro pixel-shader de 5 etapas sobre los mosaicos del mapa (los mosaicos CartoDB ya vienen oscuros nativos).
      2. Desactivar backdrop-filter: blur() continuo en paneles para liberar la GPU móvil.
      3. Detener animaciones infinitas de box-shadow en reposo (60 FPS -> 0 FPS cuando no hay emergencia). */
+  /* Filtro matricial de 1 sola pasada en hardware para OpenStreetMap (sin pedir API Key y sin recarga multi-shader) */
   .dark-map-tiles {
-    filter: none !important;
-    -webkit-filter: none !important;
+    filter: invert(0.92) hue-rotate(180deg) brightness(0.92) !important;
+    -webkit-filter: invert(0.92) hue-rotate(180deg) brightness(0.92) !important;
   }
   header,
   #sidebar-panel,
