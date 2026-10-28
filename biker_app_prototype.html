@@ -2329,15 +2329,19 @@ body.production-clean-mode #api-inspector-drawer {
             <option value="fuel_out">⛽ Sin combustible en tramo aislado</option>
           </select>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-slate-400 mb-1">Latitud WGS84</label>
-            <input type="number" step="0.0001" id="sos-lat" value="-31.6840" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+        <div class="hidden" aria-hidden="true">
+          <input type="number" step="0.0001" id="sos-lat" value="-32.9468">
+          <input type="number" step="0.0001" id="sos-lng" value="-60.6393">
+        </div>
+        <div id="sos-auto-gps-box" style="background:#0e0e0e;border:1.5px solid rgba(242,184,28,0.45);" class="rounded-xl p-3 flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2.5">
+            <span class="text-lg">🛰️</span>
+            <div>
+              <div style="color:#F5F1E6;" class="font-bold text-xs">Ubicación tomada automáticamente de tu GPS</div>
+              <div id="sos-auto-gps-status-text" style="color:#F2B81C;" class="text-[11px] font-mono">Sincronizando posición actual de tu moto...</div>
+            </div>
           </div>
-          <div>
-            <label class="block text-slate-400 mb-1">Longitud WGS84</label>
-            <input type="number" step="0.0001" id="sos-lng" value="-64.9210" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
-          </div>
+          <span style="background:rgba(242,184,28,0.16);color:#F2B81C;border:1px solid rgba(242,184,28,0.5);" class="px-2 py-0.5 rounded-full text-[10px] font-black shrink-0">GPS AUTO</span>
         </div>
         <div>
           <label class="block text-slate-400 mb-1">Descripción de referencia en ruta</label>
@@ -9102,7 +9106,58 @@ COMMIT;`;
       });
 
       // SOS Modal & Dispatch
+      window.syncSosModalWithLiveGps = function() {
+        const g = window.MOTORUTA_REAL_GPS || {};
+        const latEl = document.getElementById('sos-lat');
+        const lngEl = document.getElementById('sos-lng');
+        const statusEl = document.getElementById('sos-auto-gps-status-text');
+        if (typeof g.lat === 'number' && typeof g.lng === 'number') {
+          if (latEl) latEl.value = g.lat.toFixed(5);
+          if (lngEl) lngEl.value = g.lng.toFixed(5);
+          if (statusEl) {
+            statusEl.textContent = 'Ubicación actual de tu moto lista (±' + Math.round(g.accuracy || 15) + ' m)';
+          }
+        }
+        if ('geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(function(pos) {
+            if (typeof window.applyRealGpsFixToApp === 'function') {
+              window.applyRealGpsFixToApp(
+                pos.coords.latitude,
+                pos.coords.longitude,
+                pos.coords.accuracy,
+                pos.coords.speed,
+                pos.coords.altitude,
+                pos.coords.heading
+              );
+            }
+            if (latEl) latEl.value = pos.coords.latitude.toFixed(5);
+            if (lngEl) lngEl.value = pos.coords.longitude.toFixed(5);
+            if (statusEl) {
+              statusEl.textContent = 'Ubicación GPS en vivo confirmada (±' + Math.round(pos.coords.accuracy || 12) + ' m)';
+            }
+          }, function() {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 6000 });
+        }
+      };
+
+      window.clearActiveSosAlert = function() {
+        window.MOTORUTA_SOS_ACTIVE = false;
+        window.MOTORUTA_SOS_ISSUE_LABEL = '';
+        if (typeof sosMarker !== 'undefined' && sosMarker && map) {
+          try { map.removeLayer(sosMarker); } catch (e) {}
+          sosMarker = null;
+        }
+        const banner = document.getElementById('active-sos-map-banner');
+        if (banner) banner.classList.add('hidden');
+        if (typeof window.updateRealRiderCircleOnMap === 'function') {
+          window.updateRealRiderCircleOnMap();
+        }
+        if (typeof showToast === 'function') {
+          showToast('Baliza SOS desactivada · Ícono de moto normal restaurado', '🏍️');
+        }
+      };
+
       document.getElementById('btn-open-sos').addEventListener('click', () => {
+        window.syncSosModalWithLiveGps();
         document.getElementById('sos-response-box').classList.add('hidden');
         document.getElementById('modal-sos-alert').classList.remove('hidden');
       });
@@ -9111,34 +9166,61 @@ COMMIT;`;
       });
       document.getElementById('form-sos-alert').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const lat = parseFloat(document.getElementById('sos-lat').value);
-        const lng = parseFloat(document.getElementById('sos-lng').value);
+        const g = window.MOTORUTA_REAL_GPS || {};
+        const lat = (typeof g.lat === 'number') ? g.lat : parseFloat(document.getElementById('sos-lat').value);
+        const lng = (typeof g.lng === 'number') ? g.lng : parseFloat(document.getElementById('sos-lng').value);
+        document.getElementById('sos-lat').value = lat.toFixed(5);
+        document.getElementById('sos-lng').value = lng.toFixed(5);
+
+        const issueSelect = document.getElementById('sos-issue-type');
+        const issueLabel = (issueSelect && issueSelect.options[issueSelect.selectedIndex])
+          ? issueSelect.options[issueSelect.selectedIndex].text
+          : 'Auxilio Mecánico SOS';
+
         const payload = {
-          bike_id: DB.bikes[0].id,
-          issue_type: document.getElementById('sos-issue-type').value,
+          bike_id: (DB.bikes && DB.bikes[0]) ? DB.bikes[0].id : 'bike-1',
+          issue_type: issueSelect ? issueSelect.value : 'tire_puncture',
           description: document.getElementById('sos-description').value,
           location: { type: 'Point', coordinates: [lng, lat] }
         };
         const res = await MotoRutaApi.triggerSosAlert(payload);
         const d = res.data;
 
+        // Activar estado SOS en el ícono propio de la moto (sin duplicar pines)
+        window.MOTORUTA_SOS_ACTIVE = true;
+        window.MOTORUTA_SOS_ISSUE_LABEL = issueLabel;
         if (map && typeof L !== 'undefined') {
-          if (sosMarker) map.removeLayer(sosMarker);
-          const sosIcon = L.divIcon({
-            html: `<div class="w-9 h-9 rounded-full bg-rose-600 border-2 border-white text-white flex items-center justify-center font-bold shadow-xl sos-pulse">🆘</div>`,
-            className: 'sos-pin',
-            iconSize: [36, 36],
-            iconAnchor: [18, 18]
-          });
-          sosMarker = L.marker([lat, lng], { icon: sosIcon }).addTo(map);
-          map.flyTo([lat, lng], 12, { duration: 1.2 });
+          if (sosMarker) {
+            try { map.removeLayer(sosMarker); } catch (err) {}
+            sosMarker = null;
+          }
+          if (typeof window.updateRealRiderCircleOnMap === 'function') {
+            window.updateRealRiderCircleOnMap();
+          }
+          map.flyTo([lat, lng], 14, { duration: 1.0 });
+        }
+
+        let sosBanner = document.getElementById('active-sos-map-banner');
+        if (!sosBanner && map) {
+          const mapWrapper = document.getElementById('map') ? document.getElementById('map').parentElement : null;
+          if (mapWrapper) {
+            sosBanner = document.createElement('div');
+            sosBanner.id = 'active-sos-map-banner';
+            sosBanner.style.cssText = 'position:absolute;top:58px;left:50%;transform:translateX(-50%);z-index:1100;background:#D92B2B;color:#F5F1E6;border:2px solid #F5F1E6;border-radius:9999px;padding:6px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(217,43,43,0.75);font-size:11px;font-weight:900;white-space:nowrap;';
+            mapWrapper.appendChild(sosBanner);
+          }
+        }
+        if (sosBanner) {
+          sosBanner.classList.remove('hidden');
+          sosBanner.innerHTML = '<span>🆘 BALIZA SOS ACTIVA EN TU MOTO</span>' +
+            '<button type="button" onclick="window.clearActiveSosAlert()" style="background:#050505;color:#F2B81C;border:1px solid #F2B81C;border-radius:9999px;padding:3px 10px;font-size:10px;font-weight:900;cursor:pointer;">✓ Desactivar SOS</button>';
         }
 
         const box = document.getElementById('sos-response-box');
         box.classList.remove('hidden');
         box.innerHTML = `
-          <div class="font-bold text-emerald-400">✓ Alerta Comunitaria ${d.alert_id} emitida (${d.notified_workshops_count} talleres 24h y ${d.notified_nearby_riders_count} bikers en radio de 50 km)</div>
-          <p class="text-[11px] text-slate-300">Enviá tu posición GPS exacta directamente al WhatsApp de guardia de los talleres más cercanos:</p>
+          <div style="color:#F2B81C;" class="font-bold">✓ Baliza SOS activada en el ícono de tu moto (${d.notified_workshops_count} talleres 24h y ${d.notified_nearby_riders_count} motos en radio de 50 km alertados)</div>
+          <p class="text-[11px] text-slate-300">Tu ubicación GPS fue adjuntada automáticamente. Podés contactar por WhatsApp a los talleres más cercanos o cerrar esta ventana para ver tu moto en modo SOS en el mapa:</p>
           <div class="space-y-1.5 pt-1">
             ${d.nearest_24h_partners.map(p => `
               <div class="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200">
@@ -9152,8 +9234,16 @@ COMMIT;`;
               </div>
             `).join('')}
           </div>
+          <div class="pt-2 flex items-center justify-between gap-2">
+            <button type="button" onclick="document.getElementById('modal-sos-alert').classList.add('hidden')" style="background:#0e0e0e;color:#F5F1E6;border:1px solid rgba(245,241,230,0.35);" class="w-full py-2 rounded-xl font-bold text-xs">
+              🗺️ Ver mi moto en estado SOS en el Mapa
+            </button>
+            <button type="button" onclick="window.clearActiveSosAlert();document.getElementById('modal-sos-alert').classList.add('hidden');" style="background:#050505;color:#F2B81C;border:1px solid #F2B81C;" class="w-full py-2 rounded-xl font-bold text-xs">
+              ✅ Ya recibí auxilio (Apagar SOS)
+            </button>
+          </div>
         `;
-        showToast('Baliza SOS georreferenciada emitida en el mapa', '🆘');
+        showToast('Tu moto ahora muestra la baliza SOS en el mapa', '🆘');
       });
 
       // Garage Add Bike Modal
@@ -13984,7 +14074,7 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     if (routePillLabel && routeLabel) routePillLabel.textContent = '🧭 ' + routeLabel;
   };
 
-  // Sobrescribir el pin de la moto para incluir el cono luminoso direccional y la flecha de rumbo (estilo Google Maps)
+  // Sobrescribir el pin de la moto para incluir el cono luminoso direccional, flecha de rumbo y Estado de Auxilio SOS (#D92B2B)
   const _baseUpdateRealRiderCircleOnMap = window.updateRealRiderCircleOnMap;
   window.updateRealRiderCircleOnMap = function() {
     if (typeof _baseUpdateRealRiderCircleOnMap === 'function') {
@@ -13997,27 +14087,69 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     const nick = (typeof DB !== 'undefined' && DB.jwtPrincipal && DB.jwtPrincipal.rider_nickname)
       ? DB.jwtPrincipal.rider_nickname
       : 'Mi Moto';
+    const isSosActive = Boolean(window.MOTORUTA_SOS_ACTIVE);
+    const sosIssueShort = window.MOTORUTA_SOS_ISSUE_LABEL
+      ? String(window.MOTORUTA_SOS_ISSUE_LABEL).split('/')[0].trim()
+      : 'Solicitando Auxilio';
+
+    // Si la moto está en SOS, teñir los anillos de cobertura en Rojo Acento (#D92B2B); si no, en Dorado (#F2B81C)
+    const ringColor = isSosActive ? '#D92B2B' : '#F2B81C';
+    if (g.accuracyCircle && typeof g.accuracyCircle.setStyle === 'function') {
+      g.accuracyCircle.setStyle({
+        color: ringColor,
+        fillColor: ringColor,
+        fillOpacity: isSosActive ? 0.20 : 0.14,
+        weight: isSosActive ? 3 : 2.5,
+        dashArray: isSosActive ? '4, 6' : '6, 6'
+      });
+    }
+    if (g.innerHaloCircle && typeof g.innerHaloCircle.setStyle === 'function') {
+      g.innerHaloCircle.setStyle({
+        color: ringColor,
+        fillColor: ringColor,
+        fillOpacity: isSosActive ? 0.34 : 0.24,
+        weight: isSosActive ? 2.5 : 1.5
+      });
+    }
 
     const coneRotation = Math.round(heading);
-    const riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
-      '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
-      '🏍️ @' + nick + (g.speedKmh > 0 ? (' · ' + g.speedKmh + ' km/h') : '') +
-      '</div>' +
-      '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
-        '<div style="position:absolute;inset:-8px;transform:rotate(' + coneRotation + 'deg);transition:transform 0.35s ease-out;pointer-events:none;display:flex; flex-direction:column; align-items:center;">' +
-          '<div style="width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid rgba(242,184,28,0.55);filter:drop-shadow(0 0 6px #F2B81C);margin-top:-6px;"></div>' +
+    let riderPinHtml = '';
+
+    if (isSosActive) {
+      riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
+        '<div style="background:#D92B2B;color:#F5F1E6;border:2px solid #F5F1E6;box-shadow:0 4px 16px rgba(217,43,43,0.9);" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap mb-1 relative z-20">' +
+        '🆘 @' + nick + ' · SOLICITANDO SOS' +
         '</div>' +
-        '<div style="background:#F2B81C;color:#050505;border:2px solid #F5F1E6;box-shadow:0 0 18px rgba(242,184,28,0.9);" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base real-gps-rider-dot relative z-10">' +
-          (navMode.enabled && g.speedKmh >= 3 ? '<span style="display:inline-block;transform:rotate(' + coneRotation + 'deg);font-size:15px;line-height:1;">▲</span>' : '🏍️') +
+        '<div style="background:#050505;color:#F2B81C;border:1px solid #F2B81C;" class="px-2 py-0.5 rounded-full font-mono text-[9px] font-bold whitespace-nowrap mb-1 relative z-20">' +
+        sosIssueShort +
         '</div>' +
-      '</div>' +
-    '</div>';
+        '<div style="position:relative;width:48px;height:48px;display:flex;align-items:center;justify-content:center;">' +
+          '<div style="background:#D92B2B;color:#F5F1E6;border:2.5px solid #F5F1E6;box-shadow:0 0 26px #D92B2B;" class="w-11 h-11 rounded-full flex items-center justify-center font-black text-sm sos-pulse relative z-10">' +
+            '🆘🏍️' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    } else {
+      riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
+        '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
+        '🏍️ @' + nick + (g.speedKmh > 0 ? (' · ' + g.speedKmh + ' km/h') : '') +
+        '</div>' +
+        '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
+          '<div style="position:absolute;inset:-8px;transform:rotate(' + coneRotation + 'deg);transition:transform 0.35s ease-out;pointer-events:none;display:flex; flex-direction:column; align-items:center;">' +
+            '<div style="width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:24px solid rgba(242,184,28,0.55);filter:drop-shadow(0 0 6px #F2B81C);margin-top:-6px;"></div>' +
+          '</div>' +
+          '<div style="background:#F2B81C;color:#050505;border:2px solid #F5F1E6;box-shadow:0 0 18px rgba(242,184,28,0.9);" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base real-gps-rider-dot relative z-10">' +
+            (navMode.enabled && g.speedKmh >= 3 ? '<span style="display:inline-block;transform:rotate(' + coneRotation + 'deg);font-size:15px;line-height:1;">▲</span>' : '🏍️') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
 
     const riderIcon = L.divIcon({
       html: riderPinHtml,
       className: 'custom-pin-real-gps',
-      iconSize: [150, 68],
-      iconAnchor: [75, 48]
+      iconSize: isSosActive ? [190, 86] : [150, 68],
+      iconAnchor: isSosActive ? [95, 62] : [75, 48]
     });
     g.marker.setIcon(riderIcon);
   };
@@ -14541,10 +14673,30 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     padding: 6px 2px !important;
     font-size: 10px !important;
   }
+  /* MOTORUTA_MOBILE_SYNC_V17: Evitar que el Dock de Modo Guantes se superponga con la barra inferior y el menú de la ventana "Mapa" */
   #glove-mode-bottom-dock {
-    padding: 8px 10px !important;
+    padding: 6px 8px !important;
     border: 1.5px solid #F2B81C !important;
-    background: rgba(5, 5, 5, 0.96) !important;
+    background: rgba(5, 5, 5, 0.98) !important;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important;
+    width: min(96vw, 680px) !important;
+    border-radius: 14px !important;
+  }
+  #glove-mode-bottom-dock .glove-dock-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+  #glove-mode-bottom-dock .glove-dock-btn {
+    min-height: 56px !important;
+    min-width: 56px !important;
+    padding: 6px 4px !important;
+    font-size: 11px !important;
+    line-height: 1.15 !important;
+    border-radius: 12px !important;
+  }
+  /* Reservar espacio al final del panel "Mapa" cuando Guantes está activo para que ningún control quede tapado */
+  body.glove-mode-active #sidebar-panel {
+    padding-bottom: 86px !important;
   }
   /* En Modo Guantes, ocultar los botones flotantes chicos de SOS y Alerta sobre el mapa para no duplicarlos con el dock grande ni tapar el mapa */
   body.glove-mode-active #btn-open-sos,
