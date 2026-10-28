@@ -1936,7 +1936,7 @@ body.production-clean-mode #api-inspector-drawer {
 
           <div class="space-y-2.5">
             <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Solicitudes de Estadía Recibidas</h4><span id="badge-incoming-count" class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">1</span>
+              <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Solicitudes de Estadía Recibidas</h4><span id="badge-incoming-count" class="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">0</span>
             </div>
             <div id="incoming-requests-container" class="space-y-2.5">
               <!-- Rendered by JS -->
@@ -5860,24 +5860,7 @@ COMMIT;`;
           location: { type: 'Point', coordinates: [-64.5210, -31.4490] }
         }
       ],
-      hostingRequests: [
-        {
-          request_id: '550e8400-e29b-41d4-a716-446655440000',
-          traveler_id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
-          traveler_nickname: 'LoboRutero (BMW R 1250 GS)',
-          host_id: 'c4f8a920-1d4b-4e8a-9c12-8f7a6b5e4d3c',
-          check_in_date: '2026-10-24',
-          check_out_date: '2026-10-25',
-          travelers_count: 1,
-          bikes_count: 1,
-          traveler_note: 'Viajo desde Rosario hacia Cuyo en una R 1250 GS. Llego antes del atardecer, solo necesito resguardar la moto y descansar.',
-          status: 'pending',
-          total_amount: 0.0,
-          platform_fee: 0.0,
-          payment_status: 'not_applicable',
-          unlocked_details: null
-        }
-      ],
+      hostingRequests: [],
       users: [
         {
           id: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
@@ -6319,6 +6302,8 @@ COMMIT;`;
           unlocked_details: null
         });
 
+        window._SESSION_CREATED_REQ_IDS = window._SESSION_CREATED_REQ_IDS || {};
+        window._SESSION_CREATED_REQ_IDS[newReq.request_id] = true;
         DB.hostingRequests.unshift(newReq);
         // Sync to Supabase (compatible with both SUPABASE_DDL_SQL and schema_v1.sql)
         supabaseRestRequest('POST', 'hosting_requests', {
@@ -6891,8 +6876,23 @@ COMMIT;`;
                 location: parseGeoJsonPoint(p.location, SEED_POIS_BACKUP[idx % SEED_POIS_BACKUP.length].location.coordinates)
               }));
             }
-            if (reqsR.ok && Array.isArray(reqsR.data) && reqsR.data.length > 0) {
-              DB.hostingRequests = reqsR.data.map((r, idx) => normalizeHostingRequestRecord(r, idx));
+            if (reqsR.ok && Array.isArray(reqsR.data)) {
+              const sessionIds = window._SESSION_CREATED_REQ_IDS || {};
+              const staleTinchoReqs = reqsR.data.filter(r =>
+                r && (
+                  r.request_id === '550e8400-e29b-41d4-a716-446655440000' ||
+                  (r.host_id === 'c4f8a920-1d4b-4e8a-9c12-8f7a6b5e4d3c' && !sessionIds[r.request_id]) ||
+                  (r.traveler_note && r.traveler_note.indexOf('Viajo desde Rosario hacia Cuyo') !== -1 && !sessionIds[r.request_id])
+                )
+              );
+              staleTinchoReqs.forEach(sr => {
+                if (sr && sr.request_id) {
+                  supabaseRestRequest('DELETE', 'hosting_requests', null, `?request_id=eq.${encodeURIComponent(sr.request_id)}`).catch(() => {});
+                }
+              });
+              DB.hostingRequests = reqsR.data
+                .filter(r => r && !staleTinchoReqs.includes(r))
+                .map((r, idx) => normalizeHostingRequestRecord(r, idx));
             }
             await this.loadGatewayConfigFromSupabase(true);
             normalizeAllDatabaseRecords();
@@ -7306,7 +7306,12 @@ COMMIT;`;
           <div class="p-3 rounded-xl ${cardBorder} border space-y-2 text-xs">
             <div class="flex items-center justify-between gap-2">
               <span class="font-bold text-white">Reserva con ${host.rider_info.full_name} (@${host.rider_info.rider_nickname})</span>
-              ${statusBadge}
+              <div class="flex items-center gap-1.5">
+                ${statusBadge}
+                <button type="button" onclick="window.deleteHostingRequest('${req.request_id}')" class="bg-slate-900 hover:bg-rose-600 text-slate-300 hover:text-white border border-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold transition" title="Borrar o cancelar esta reserva">
+                  🗑️ Borrar
+                </button>
+              </div>
             </div>
             <div class="text-[11px] text-slate-300">Fechas: ${req.check_in_date} al ${req.check_out_date} · ${req.bikes_count} moto(s)</div>
             ${
@@ -7350,6 +7355,16 @@ COMMIT;`;
 
       panels.forEach(p => { p.innerHTML = html; });
     }
+
+    window.deleteHostingRequest = async function(requestId) {
+      DB.hostingRequests = (DB.hostingRequests || []).filter(r => r.request_id !== requestId && r.id !== requestId);
+      if (window._SESSION_CREATED_REQ_IDS) delete window._SESSION_CREATED_REQ_IDS[requestId];
+      supabaseRestRequest('DELETE', 'hosting_requests', null, `?request_id=eq.${encodeURIComponent(requestId)}`).catch(() => {});
+      renderMyBookingsBanner();
+      renderIncomingRequests();
+      await refreshCorridorAndMap();
+      showToast('Reserva eliminada correctamente', '🗑️');
+    };
 
     async function tryUnlockAccessPass(requestId) {
       try {
@@ -12050,23 +12065,34 @@ COMMIT;`;
     }
   };
 
-  // Activación automática del Modo Guantes cuando el GPS detecta que la moto comienza a moverse (>= 5 km/h)
-  window.syncGloveModeWithRealBikeMotion = function(speedKmh) {
+  // Activación automática del Modo Guantes con Filtro Anti-Deriva GPS (requiere velocidad real >= 12 km/h
+  // y 3 lecturas consecutivas con desplazamiento real confirmado fuera del radio de error del satélite)
+  window.syncGloveModeWithRealBikeMotion = function(speedKmh, isConfirmedRealMotion) {
     const cleanSpeed = (typeof speedKmh === 'number' && !isNaN(speedKmh) && speedKmh >= 0) ? speedKmh : 0;
     ergoState.simulatedSpeedKmh = cleanSpeed;
-    if (cleanSpeed < 3) {
-      ergoState.manualOffDuringMotion = false;
+
+    if (cleanSpeed < 6 || isConfirmedRealMotion === false) {
+      ergoState.consecutiveMovingFixes = 0;
+      if (cleanSpeed < 4) {
+        ergoState.manualOffDuringMotion = false;
+      }
       enforceMotionKeyboardLock();
       return;
     }
-    if (cleanSpeed >= 5 && !ergoState.gloveModeEnabled && !ergoState.manualOffDuringMotion) {
-      ergoState.gloveModeEnabled = true;
-      saveErgoState();
-      applyErgonomicsDOM();
-      if (typeof window.showToast === 'function') {
-        window.showToast('🧤 Movimiento detectado (' + Math.round(cleanSpeed) + ' km/h): Modo Guantes activado automáticamente', '🏍️');
+
+    if (cleanSpeed >= 12 && isConfirmedRealMotion !== false) {
+      ergoState.consecutiveMovingFixes = (ergoState.consecutiveMovingFixes || 0) + 1;
+      if (ergoState.consecutiveMovingFixes >= 3 && !ergoState.gloveModeEnabled && !ergoState.manualOffDuringMotion) {
+        ergoState.gloveModeEnabled = true;
+        saveErgoState();
+        applyErgonomicsDOM();
+        if (typeof window.showToast === 'function') {
+          window.showToast('🧤 Rodada en marcha (' + Math.round(cleanSpeed) + ' km/h): Modo Guantes activado automáticamente', '🏍️');
+        }
+        return;
       }
-      return;
+    } else {
+      ergoState.consecutiveMovingFixes = 0;
     }
     enforceMotionKeyboardLock();
   };
@@ -12749,7 +12775,7 @@ COMMIT;`;
   // ETAPA 7: MOTOR DEFINITIVO DE PRODUCCIÓN — GPS FÍSICO REAL EN VIVO (CAPACITOR
   // NATIVE GEOLOCATION + HTML5 WATCHPOSITION) SIN COORDENADAS DE TESTEO
   // ============================================================================
-  // MOTORUTA_MOBILE_SYNC_V15
+  // MOTORUTA_MOBILE_SYNC_V16
   let savedLastGps = null;
   try {
     const rawGps = localStorage.getItem('motoruta_last_real_gps');
@@ -12862,11 +12888,13 @@ COMMIT;`;
     const primaryBike = userBikes.find(b => b.is_primary) || userBikes[0] || (Array.isArray(DB.bikes) ? DB.bikes.find(b => b.is_primary) || DB.bikes[0] : null);
     const bikeLabel = primaryBike ? `${primaryBike.brand} ${primaryBike.model}` : 'Mi Moto';
 
-    if (document.body.classList.contains('production-clean-mode') && Array.isArray(DB.hostingRequests)) {
+    if (Array.isArray(DB.hostingRequests)) {
+      const sessionIds = window._SESSION_CREATED_REQ_IDS || {};
       DB.hostingRequests = DB.hostingRequests.filter(function(r) {
-        const isSeedDemo = r.request_id === '550e8400-e29b-41d4-a716-446655440000' ||
-          (r.traveler_note && r.traveler_note.indexOf('Viajo desde Rosario hacia Cuyo') !== -1);
-        return !isSeedDemo;
+        const isTinchoTest = r.request_id === '550e8400-e29b-41d4-a716-446655440000' ||
+          (r.host_id === 'c4f8a920-1d4b-4e8a-9c12-8f7a6b5e4d3c' && !sessionIds[r.request_id]) ||
+          (r.traveler_note && r.traveler_note.indexOf('Viajo desde Rosario hacia Cuyo') !== -1 && !sessionIds[r.request_id]);
+        return !isTinchoTest;
       });
       if (typeof renderMyBookingsBanner === 'function') renderMyBookingsBanner();
       if (typeof renderIncomingRequests === 'function') renderIncomingRequests();
@@ -14001,13 +14029,14 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     const hasCustomRoute = Boolean(custom && custom.polyline && custom.destLat !== null);
     const hasGpxRoute = Boolean(typeof appState !== 'undefined' && appState.routeVisible && typeof routePolyline !== 'undefined' && routePolyline);
 
-    // Activar automáticamente el Modo Guantes apenas el GPS detecta que la moto comienza a moverse (>= 5 km/h)
+    // Activar automáticamente el Modo Guantes solo con movimiento real confirmado (>= 12 km/h y fuera del radio de deriva GPS)
+    const isConfirmedMotion = Boolean(navMode && navMode.isConfirmedMoving);
     if (typeof window.syncGloveModeWithRealBikeMotion === 'function') {
-      window.syncGloveModeWithRealBikeMotion(speedKmh);
+      window.syncGloveModeWithRealBikeMotion(speedKmh, isConfirmedMotion);
     }
 
-    // Si la moto se pone en movimiento (>= 6 km/h) y hay una ruta activa, activar seguimiento estilo Google Maps automáticamente
-    if ((hasCustomRoute || hasGpxRoute) && speedKmh >= 6 && !navMode.enabled) {
+    // Si la moto se pone en movimiento real (>= 12 km/h) y hay una ruta activa, activar seguimiento estilo Google Maps automáticamente
+    if ((hasCustomRoute || hasGpxRoute) && speedKmh >= 12 && isConfirmedMotion && !navMode.enabled) {
       navMode.enabled = true;
       navMode.autoFollow = true;
     }
@@ -14065,31 +14094,59 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     }
   };
 
-  // Interceptar actualizaciones del GPS para calcular rumbo en movimiento (Course-over-Ground) y velocidad real
+  // Interceptar actualizaciones del GPS con Filtro Anti-Deriva Satelital (GPS Drift / Multipath Filter):
+  // Evita que los pequeños saltos del GPS cuando estás quieto (2 a 12 m) generen velocidades falsas o disparen el Modo Guantes.
   const _prevApplyGpsForNav = window.applyRealGpsFixToApp;
   window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters, headingDeg) {
     const g = window.MOTORUTA_REAL_GPS || {};
     const navMode = window.MOTORUTA_NAV_MODE;
     const now = Date.now();
+    const acc = (typeof accuracyMeters === 'number' && !isNaN(accuracyMeters) && accuracyMeters > 0) ? accuracyMeters : 15;
 
-    let computedSpeedMps = speedMps;
-    let computedHeading = (typeof headingDeg === 'number' && !isNaN(headingDeg) && headingDeg >= 0) ? headingDeg : null;
+    if (typeof navMode.anchorLat !== 'number' || typeof navMode.anchorLng !== 'number') {
+      navMode.anchorLat = lat;
+      navMode.anchorLng = lng;
+      navMode.anchorTs = now;
+    }
 
-    if (typeof navMode.lastFixLat === 'number' && typeof navMode.lastFixLng === 'number') {
-      const movedMeters = window.distanceMetersBetween(navMode.lastFixLat, navMode.lastFixLng, lat, lng);
-      const dtSec = (now - (navMode.lastFixTs || now)) / 1000.0;
+    const distFromAnchor = window.distanceMetersBetween(navMode.anchorLat, navMode.anchorLng, lat, lng);
+    // Para considerar que la moto salió del lugar, debe superar el radio de error del GPS y al menos 15 metros reales
+    const minRealMoveRadius = Math.max(acc * 0.95, 15.0);
 
-      // Si el teléfono se desplazó al menos 2.5 metros, calculamos el rumbo exacto de avance de la moto
-      if (movedMeters >= 2.5) {
-        const bearing = window.calculateBearingDegrees(navMode.lastFixLat, navMode.lastFixLng, lat, lng);
-        if (computedHeading === null) {
-          computedHeading = bearing;
-        }
-        // Si el navegador móvil no reporta speedMps, lo calculamos por desplazamiento GPS
-        if ((computedSpeedMps === null || computedSpeedMps === undefined || isNaN(computedSpeedMps)) && dtSec > 0.4 && movedMeters < 500) {
-          computedSpeedMps = movedMeters / dtSec;
-        }
+    let computedSpeedMps = 0;
+    let computedHeading = null;
+    navMode.isConfirmedMoving = false;
+
+    if (distFromAnchor >= minRealMoveRadius && acc <= 45) {
+      const dtAnchorSec = Math.max((now - (navMode.anchorTs || now)) / 1000.0, 1.0);
+      const stepMeters = (typeof navMode.lastFixLat === 'number')
+        ? window.distanceMetersBetween(navMode.lastFixLat, navMode.lastFixLng, lat, lng)
+        : distFromAnchor;
+      const dtStepSec = Math.max((now - (navMode.lastFixTs || now)) / 1000.0, 0.8);
+
+      // Usar velocidad Doppler del chip GPS si está disponible, o velocidad media real si superó 15 m
+      let rawMps = (typeof speedMps === 'number' && !isNaN(speedMps) && speedMps >= 0)
+        ? speedMps
+        : (stepMeters >= 12 && dtStepSec >= 1.0 && stepMeters < 400 ? (stepMeters / dtStepSec) : (distFromAnchor / dtAnchorSec));
+
+      // Zona muerta (Deadband): velocidades menores a 2.2 m/s (8 km/h) se consideran detenido / caminando
+      if (rawMps >= 2.2 && rawMps < 75) {
+        computedSpeedMps = rawMps;
+        navMode.isConfirmedMoving = (rawMps * 3.6 >= 12);
+        const bearing = window.calculateBearingDegrees(navMode.anchorLat, navMode.anchorLng, lat, lng);
+        computedHeading = (typeof headingDeg === 'number' && !isNaN(headingDeg) && headingDeg >= 0) ? headingDeg : bearing;
       }
+
+      // Desplazar el punto de anclaje a la nueva posición confirmada
+      navMode.anchorLat = lat;
+      navMode.anchorLng = lng;
+      navMode.anchorTs = now;
+    } else {
+      // Está dentro del radio de deriva del GPS (quieto): anular velocidad fantasma y mantener posición estable
+      computedSpeedMps = 0;
+      navMode.isConfirmedMoving = false;
+      lat = navMode.anchorLat;
+      lng = navMode.anchorLng;
     }
 
     navMode.lastFixLat = lat;
