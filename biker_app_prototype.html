@@ -7062,8 +7062,9 @@ COMMIT;`;
         map = L.map('map', { zoomControl: false }).setView([initLat, initLng], 13);
         L.control.zoom({ position: 'topright' }).addTo(map);
 
-        const osmDark = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>',
+        const osmDark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions" target="_blank">CARTO</a>',
+          subdomains: 'abcd',
           maxZoom: 19,
           className: 'dark-map-tiles'
         });
@@ -13036,7 +13037,11 @@ COMMIT;`;
     g.altitude = (typeof altitudeMeters === 'number' && !isNaN(altitudeMeters)) ? Math.round(altitudeMeters) : null;
 
     try {
-      localStorage.setItem('motoruta_last_real_gps', JSON.stringify({ lat: g.lat, lng: g.lng, accuracy: g.accuracy, ts: Date.now() }));
+      const _nowLs = Date.now();
+      if (!window._lastGpsLsSaveTs || (_nowLs - window._lastGpsLsSaveTs > 30000)) {
+        window._lastGpsLsSaveTs = _nowLs;
+        localStorage.setItem('motoruta_last_real_gps', JSON.stringify({ lat: g.lat, lng: g.lng, accuracy: g.accuracy, ts: _nowLs }));
+      }
     } catch (e) {}
 
     const diagCoordsEl = document.getElementById('prod-diag-coords');
@@ -14297,8 +14302,13 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
     window.updateLiveDrivingHudFromGps(lat, lng, g.speedKmh || 0, accuracyMeters, altitudeMeters);
   };
 
-  // Escuchar brújula interna del teléfono (DeviceOrientation) como apoyo de orientación cuando la moto arranca
+  // Escuchar brújula interna del teléfono (DeviceOrientation) SOLO cuando la Navegación Rumbo Moto está activa y con throttle térmico a 2 Hz (500 ms)
+  window._lastCompassTickTs = 0;
   window.addEventListener('deviceorientation', function(ev) {
+    if (!window.MOTORUTA_NAV_MODE || !window.MOTORUTA_NAV_MODE.enabled || window.MOTORUTA_NAV_MODE.orientation !== 'heading-up') return;
+    const now = Date.now();
+    if (now - (window._lastCompassTickTs || 0) < 500) return;
+    window._lastCompassTickTs = now;
     const g = window.MOTORUTA_REAL_GPS || {};
     if (g.speedKmh && g.speedKmh > 8) return; // En velocidad prevalece el vector GPS de movimiento real
     let compassHeading = null;
@@ -14308,13 +14318,16 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
       compassHeading = (360 - ev.alpha) % 360;
     }
     if (compassHeading !== null) {
-      g.heading = Math.round(compassHeading);
-      window.MOTORUTA_NAV_MODE.currentHeadingDeg = g.heading;
-      if (window.MOTORUTA_NAV_MODE.enabled && window.MOTORUTA_NAV_MODE.orientation === 'heading-up') {
-        window.applyMapHeadingRotation(g.heading);
+      const rounded = Math.round(compassHeading);
+      const prev = g.heading || 0;
+      const diff = Math.abs((((rounded - prev) % 360) + 540) % 360 - 180);
+      if (diff >= 5) {
+        g.heading = rounded;
+        window.MOTORUTA_NAV_MODE.currentHeadingDeg = rounded;
+        window.applyMapHeadingRotation(rounded);
       }
     }
-  }, true);
+  }, { passive: true });
 
   // Si el usuario arrastra el mapa manualmente, compensar vector táctil y pausar auto-centrado por 10 segundos para dejarlo explorar
   window.addEventListener('DOMContentLoaded', function() {
@@ -14702,6 +14715,421 @@ cd android &amp;&amp; ./gradlew bundleRelease assembleRelease</pre>
   body.glove-mode-active #btn-open-sos,
   body.glove-mode-active #btn-float-report-hazard {
     display: none !important;
+  }
+</style>
+<script>
+// ============================================================================
+// MOTORUTA_MOBILE_SYNC_V18: OPTIMIZACIÓN TÉRMICA Y DE BATERÍA "MODO FRÍO"
+// (ESTILO GOOGLE MAPS: GPS FUSIONADO ADAPTATIVO + CERO FILTROS GPU + DOM CACHE)
+// ============================================================================
+(function() {
+  window.MOTORUTA_THERMAL_GUARD = {
+    powerProfile: 'idle-eco', // 'idle-eco' (exploración fría) vs 'active-nav' (navegación / rodada / SOS)
+    lastProcessedFixTs: 0,
+    lastLocalStorageWriteTs: 0,
+    lastRenderedLat: null,
+    lastRenderedLng: null,
+    lastPinSignature: '',
+    lastRingSignature: '',
+    bookingsCleanedOnce: false
+  };
+
+  // Determinar si la app realmente necesita GPS Satelital Continuo de Alta Precisión (1 Hz)
+  // o si está en modo exploración de mapa (GPS Fusionado de Bajo Consumo como Google Maps)
+  window.isHighAccuracyGpsNeeded = function() {
+    const navModeActive = Boolean(window.MOTORUTA_NAV_MODE && window.MOTORUTA_NAV_MODE.enabled);
+    const navEngineActive = Boolean(window.MOTORUTA_NAV_ENGINE && window.MOTORUTA_NAV_ENGINE.active);
+    const customRouteActive = Boolean(window.CUSTOM_DESTINATION_ROUTE && window.CUSTOM_DESTINATION_ROUTE.polyline);
+    const gpxRouteActive = Boolean(typeof appState !== 'undefined' && appState.routeVisible);
+    const packLiveActive = Boolean(typeof DB !== 'undefined' && DB.packSession && DB.packSession.is_live);
+    const sosActive = Boolean(window.MOTORUTA_SOS_ACTIVE);
+    return navModeActive || navEngineActive || customRouteActive || gpxRouteActive || packLiveActive || sosActive;
+  };
+
+  // Detener watchers de GPS activos (para cambio de perfil energético o suspensión en segundo plano)
+  window.stopAllGpsWatchers = function() {
+    const g = window.MOTORUTA_REAL_GPS || {};
+    if (g.watchId !== null && g.watchId !== undefined && 'geolocation' in navigator) {
+      try { navigator.geolocation.clearWatch(g.watchId); } catch (e) {}
+      g.watchId = null;
+    }
+    if (g.capWatchId) {
+      try {
+        const capGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+        if (capGeo && typeof capGeo.clearWatch === 'function') {
+          capGeo.clearWatch({ id: g.capWatchId });
+        }
+      } catch (e) {}
+      g.capWatchId = null;
+    }
+  };
+
+  // Optimizar syncRegisteredUserAndRealGpsState para no reconstruir el DOM de reservas en cada pulso de GPS
+  window.syncRegisteredUserAndRealGpsState = function(forceDomRebuild) {
+    if (typeof DB === 'undefined') return;
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const tg = window.MOTORUTA_THERMAL_GUARD;
+    const p = DB.jwtPrincipal || {};
+    const nick = p.rider_nickname || 'MiMoto';
+    const fullName = p.full_name || nick;
+    const userBikes = Array.isArray(DB.bikes) ? DB.bikes.filter(function(b) { return b.user_id === p.sub; }) : [];
+    const primaryBike = userBikes.find(function(b) { return b.is_primary; }) || userBikes[0] || (Array.isArray(DB.bikes) ? DB.bikes[0] : null);
+    const bikeLabel = primaryBike ? (primaryBike.brand + ' ' + primaryBike.model) : 'Mi Moto';
+
+    if (!tg.bookingsCleanedOnce || forceDomRebuild) {
+      tg.bookingsCleanedOnce = true;
+      if (Array.isArray(DB.hostingRequests)) {
+        const sessionIds = window._SESSION_CREATED_REQ_IDS || {};
+        DB.hostingRequests = DB.hostingRequests.filter(function(r) {
+          const isTinchoTest = r.request_id === '550e8400-e29b-41d4-a716-446655440000' ||
+            (r.host_id === 'c4f8a920-1d4b-4e8a-9c12-8f7a6b5e4d3c' && !sessionIds[r.request_id]) ||
+            (r.traveler_note && r.traveler_note.indexOf('Viajo desde Rosario hacia Cuyo') !== -1 && !sessionIds[r.request_id]);
+          return !isTinchoTest;
+        });
+        if (typeof renderMyBookingsBanner === 'function') renderMyBookingsBanner();
+        if (typeof renderIncomingRequests === 'function') renderIncomingRequests();
+      }
+      if (Array.isArray(DB.myRidingGroups)) {
+        DB.myRidingGroups.forEach(function(grp) {
+          if (Array.isArray(grp.members)) {
+            const meMember = grp.members.find(function(m) { return m.is_me; }) || grp.members[0];
+            if (meMember) {
+              meMember.is_me = true;
+              meMember.nickname = nick;
+              meMember.full_name = fullName;
+              meMember.bike = bikeLabel;
+            }
+          }
+        });
+        if (typeof renderMyHabitualGroup === 'function') renderMyHabitualGroup();
+      }
+    }
+
+    if (DB.packSession && Array.isArray(DB.packSession.members) && DB.packSession.members.length > 0) {
+      const leader = DB.packSession.members[0];
+      leader.nickname = nick;
+      leader.full_name = fullName;
+      leader.bike = bikeLabel;
+      if (g.lat !== null && g.lng !== null) {
+        leader.lat = g.lat;
+        leader.lng = g.lng;
+        leader.speed_kmh = g.speedKmh || 0;
+      }
+    }
+
+    const ownerNameEl = document.getElementById('host-mgr-owner-name');
+    if (ownerNameEl) ownerNameEl.textContent = fullName + ' (@' + nick + ')';
+    const exactCoordsEl = document.getElementById('host-mgr-exact-coords');
+    if (exactCoordsEl && g.lat !== null && g.lng !== null) {
+      exactCoordsEl.textContent = '[' + g.lng.toFixed(6) + ', ' + g.lat.toFixed(6) + ']';
+    }
+  };
+
+  // Optimizar updateRealRiderCircleOnMap con firma en caché (evita destruir y recrear el nodo DOM del marcador en cada segundo)
+  window.updateRealRiderCircleOnMap = function(forceIconRefresh) {
+    const g = window.MOTORUTA_REAL_GPS;
+    if (!g || g.lat === null || g.lng === null) return;
+    if (typeof map === 'undefined' || !map || typeof L === 'undefined') return;
+    const tg = window.MOTORUTA_THERMAL_GUARD;
+
+    const corridorKm = (typeof appState !== 'undefined' && appState.corridorKm) ? Number(appState.corridorKm) : 25;
+    const zoneRadiusMeters = Math.max(1200, Math.min(corridorKm * 120, 6000));
+    const innerRadiusMeters = Math.max(g.accuracy || 25, 220);
+    const isSosActive = Boolean(window.MOTORUTA_SOS_ACTIVE);
+    const ringColor = isSosActive ? '#D92B2B' : '#F2B81C';
+
+    const movedMeters = (typeof tg.lastRenderedLat === 'number' && typeof tg.lastRenderedLng === 'number' && typeof window.distanceMetersBetween === 'function')
+      ? window.distanceMetersBetween(tg.lastRenderedLat, tg.lastRenderedLng, g.lat, g.lng)
+      : 999;
+
+    const ringSig = ringColor + '|' + zoneRadiusMeters + '|' + innerRadiusMeters;
+
+    if (!g.accuracyCircle || !map.hasLayer(g.accuracyCircle)) {
+      g.accuracyCircle = L.circle([g.lat, g.lng], {
+        radius: zoneRadiusMeters,
+        color: ringColor,
+        fillColor: ringColor,
+        fillOpacity: isSosActive ? 0.20 : 0.14,
+        weight: isSosActive ? 3 : 2.5,
+        dashArray: isSosActive ? '4, 6' : '6, 6'
+      }).addTo(map);
+    } else {
+      if (movedMeters >= 2 || forceIconRefresh) {
+        g.accuracyCircle.setLatLng([g.lat, g.lng]);
+      }
+      if (tg.lastRingSignature !== ringSig || forceIconRefresh) {
+        g.accuracyCircle.setRadius(zoneRadiusMeters);
+        g.accuracyCircle.setStyle({
+          color: ringColor,
+          fillColor: ringColor,
+          fillOpacity: isSosActive ? 0.20 : 0.14,
+          weight: isSosActive ? 3 : 2.5,
+          dashArray: isSosActive ? '4, 6' : '6, 6'
+        });
+      }
+    }
+
+    if (!g.innerHaloCircle || !map.hasLayer(g.innerHaloCircle)) {
+      g.innerHaloCircle = L.circle([g.lat, g.lng], {
+        radius: innerRadiusMeters,
+        color: ringColor,
+        fillColor: ringColor,
+        fillOpacity: isSosActive ? 0.34 : 0.24,
+        weight: isSosActive ? 2.5 : 1.5
+      }).addTo(map);
+    } else {
+      if (movedMeters >= 2 || forceIconRefresh) {
+        g.innerHaloCircle.setLatLng([g.lat, g.lng]);
+      }
+      if (tg.lastRingSignature !== ringSig || forceIconRefresh) {
+        g.innerHaloCircle.setRadius(innerRadiusMeters);
+        g.innerHaloCircle.setStyle({
+          color: ringColor,
+          fillColor: ringColor,
+          fillOpacity: isSosActive ? 0.34 : 0.24,
+          weight: isSosActive ? 2.5 : 1.5
+        });
+      }
+    }
+    tg.lastRingSignature = ringSig;
+
+    const navMode = window.MOTORUTA_NAV_MODE || {};
+    const rawHeading = (typeof g.heading === 'number' && !isNaN(g.heading)) ? g.heading : (navMode.currentHeadingDeg || 0);
+    // Agrupar rotación del cono en pasos de 6° para no reconstruir el DOM por micro-variaciones
+    const coneRotation = Math.round(rawHeading / 6) * 6;
+    const nick = (typeof DB !== 'undefined' && DB.jwtPrincipal && DB.jwtPrincipal.rider_nickname)
+      ? DB.jwtPrincipal.rider_nickname
+      : 'Mi Moto';
+    const sosIssueShort = window.MOTORUTA_SOS_ISSUE_LABEL
+      ? String(window.MOTORUTA_SOS_ISSUE_LABEL).split('/')[0].trim()
+      : 'Solicitando Auxilio';
+    const speedDisplay = (g.speedKmh && g.speedKmh >= 3) ? g.speedKmh : 0;
+    const showNavArrow = Boolean(navMode.enabled && speedDisplay >= 3);
+
+    const pinSignature = [nick, speedDisplay, coneRotation, isSosActive ? 1 : 0, sosIssueShort, showNavArrow ? 1 : 0].join('|');
+
+    if (!g.marker || !map.hasLayer(g.marker)) {
+      tg.lastPinSignature = '';
+    }
+
+    if (tg.lastPinSignature !== pinSignature || forceIconRefresh) {
+      tg.lastPinSignature = pinSignature;
+      let riderPinHtml = '';
+      if (isSosActive) {
+        riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
+          '<div style="background:#D92B2B;color:#F5F1E6;border:2px solid #F5F1E6;box-shadow:0 4px 14px rgba(217,43,43,0.85);" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap mb-1 relative z-20">' +
+          '🆘 @' + nick + ' · SOLICITANDO SOS' +
+          '</div>' +
+          '<div style="background:#050505;color:#F2B81C;border:1px solid #F2B81C;" class="px-2 py-0.5 rounded-full font-mono text-[9px] font-bold whitespace-nowrap mb-1 relative z-20">' +
+          sosIssueShort +
+          '</div>' +
+          '<div style="position:relative;width:48px;height:48px;display:flex;align-items:center;justify-content:center;">' +
+            '<div style="background:#D92B2B;color:#F5F1E6;border:2.5px solid #F5F1E6;" class="w-11 h-11 rounded-full flex items-center justify-center font-black text-sm sos-active-pin-pulse relative z-10">' +
+              '🆘🏍️' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      } else {
+        riderPinHtml = '<div class="motoruta-rider-pin-wrapper flex flex-col items-center" style="position:relative;">' +
+          '<div style="background:#050505;color:#F2B81C;border:1.5px solid #F2B81C;" class="motoruta-rider-pin-label px-2.5 py-0.5 rounded-full font-mono text-[10px] font-black whitespace-nowrap shadow-xl mb-1 relative z-20">' +
+          '🏍️ @' + nick + (speedDisplay > 0 ? (' · ' + speedDisplay + ' km/h') : '') +
+          '</div>' +
+          '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;">' +
+            '<div style="position:absolute;inset:-8px;transform:rotate(' + coneRotation + 'deg);transition:transform 0.35s ease-out;pointer-events:none;display:flex;flex-direction:column;align-items:center;">' +
+              '<div style="width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-bottom:22px solid rgba(242,184,28,0.48);margin-top:-5px;"></div>' +
+            '</div>' +
+            '<div style="background:#F2B81C;color:#050505;border:2px solid #F5F1E6;box-shadow:0 2px 10px rgba(242,184,28,0.65);" class="w-9 h-9 rounded-full flex items-center justify-center font-black text-base real-gps-rider-dot relative z-10">' +
+              (showNavArrow ? '<span style="display:inline-block;transform:rotate(' + coneRotation + 'deg);font-size:15px;line-height:1;">▲</span>' : '🏍️') +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      const riderIcon = L.divIcon({
+        html: riderPinHtml,
+        className: 'custom-pin-real-gps',
+        iconSize: isSosActive ? [190, 86] : [150, 68],
+        iconAnchor: isSosActive ? [95, 62] : [75, 48]
+      });
+
+      if (!g.marker || !map.hasLayer(g.marker)) {
+        g.marker = L.marker([g.lat, g.lng], { icon: riderIcon, zIndexOffset: 2000 }).addTo(map);
+      } else {
+        g.marker.setLatLng([g.lat, g.lng]);
+        g.marker.setIcon(riderIcon);
+      }
+      tg.lastRenderedLat = g.lat;
+      tg.lastRenderedLng = g.lng;
+    } else if (movedMeters >= 2 && g.marker) {
+      g.marker.setLatLng([g.lat, g.lng]);
+      tg.lastRenderedLat = g.lat;
+      tg.lastRenderedLng = g.lng;
+    }
+  };
+
+  // Envolver applyRealGpsFixToApp con regulador inteligente de frecuencia (Adaptive Throttle)
+  const _unthrottledApplyRealGpsFix = window.applyRealGpsFixToApp;
+  window.applyRealGpsFixToApp = function(lat, lng, accuracyMeters, speedMps, altitudeMeters, headingDeg, forceImmediate) {
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) return;
+    const now = Date.now();
+    const tg = window.MOTORUTA_THERMAL_GUARD;
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const highAccNeeded = window.isHighAccuracyGpsNeeded();
+
+    // Intervalo mínimo entre reprocesamientos de UI:
+    // - En exploración/reposo (sin ruta ni Pack Ride activo): cada 6000 ms (6 seg) como Google Maps en vista libre
+    // - En navegación activa / Pack Ride / SOS: cada 1800 ms (1.8 seg)
+    const minIntervalMs = highAccNeeded ? 1800 : 6000;
+    if (!forceImmediate && g.centeredOnce && (now - tg.lastProcessedFixTs < minIntervalMs)) {
+      return;
+    }
+    tg.lastProcessedFixTs = now;
+
+    // Verificar si cambió el perfil energético requerido (por ejemplo, el usuario inició o canceló una ruta)
+    const desiredProfile = highAccNeeded ? 'active-nav' : 'idle-eco';
+    if (tg.powerProfile !== desiredProfile) {
+      window.syncAdaptiveGpsPowerProfile(false);
+    }
+
+    if (typeof _unthrottledApplyRealGpsFix === 'function') {
+      _unthrottledApplyRealGpsFix(lat, lng, accuracyMeters, speedMps, altitudeMeters, headingDeg);
+    }
+  };
+
+  // Reemplazar startDefinitiveProductionGps por el Motor GPS Adaptativo (sin watchers duplicados y con modo Eco en reposo)
+  window.syncAdaptiveGpsPowerProfile = function(userTriggered) {
+    const g = window.MOTORUTA_REAL_GPS || {};
+    const tg = window.MOTORUTA_THERMAL_GUARD;
+    const highAccNeeded = Boolean(userTriggered || window.isHighAccuracyGpsNeeded());
+    tg.powerProfile = highAccNeeded ? 'active-nav' : 'idle-eco';
+
+    // Limpiar watchers previos para que NUNCA corran 2 watchers en paralelo recalentando el chip GNSS
+    window.stopAllGpsWatchers();
+
+    // Si la pestaña está oculta y no estamos en navegación ni rodada grupal ni SOS, hibernar GPS (0% consumo)
+    if (document.hidden && ! window.isHighAccuracyGpsNeeded()) {
+      return;
+    }
+
+    const watchOptions = highAccNeeded
+      ? { enableHighAccuracy: true, maximumAge: 3000, timeout: 12000 }
+      : { enableHighAccuracy: false, maximumAge: 15000, timeout: 12000 };
+
+    const capGeo = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Geolocation;
+    if (capGeo && typeof capGeo.watchPosition === 'function') {
+      // En app nativa Android/iOS usar ÚNICAMENTE el watcher nativo de Capacitor (sin duplicar con HTML5)
+      capGeo.watchPosition(watchOptions, function(pos) {
+        if (pos && pos.coords) {
+          window.applyRealGpsFixToApp(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.speed,
+            pos.coords.altitude,
+            pos.coords.heading
+          );
+        }
+      }).then(function(watchId) {
+        g.capWatchId = watchId;
+      }).catch(function() {});
+    } else if ('geolocation' in navigator) {
+      // En navegador móvil usar un único watcher HTML5 con perfil adaptativo
+      g.watchId = navigator.geolocation.watchPosition(
+        function(pos) {
+          window.applyRealGpsFixToApp(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.speed,
+            pos.coords.altitude,
+            pos.coords.heading
+          );
+        },
+        function() {},
+        watchOptions
+      );
+    }
+  };
+
+  window.startDefinitiveProductionGps = function(userTriggered) {
+    window.syncRegisteredUserAndRealGpsState(false);
+    window.updateRealRiderCircleOnMap(false);
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          window.applyRealGpsFixToApp(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.speed,
+            pos.coords.altitude,
+            pos.coords.heading,
+            true
+          );
+          if (userTriggered && typeof map !== 'undefined' && map) {
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 14, { duration: 0.7 });
+          }
+        },
+        function() {},
+        { enableHighAccuracy: Boolean(userTriggered), maximumAge: userTriggered ? 5000 : 45000, timeout: 6000 }
+      );
+    }
+
+    window.syncAdaptiveGpsPowerProfile(false);
+  };
+
+  // Hibernación automática cuando el celular apaga la pantalla o pasa a otra app (si no hay navegación activa)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      if (!window.isHighAccuracyGpsNeeded()) {
+        window.stopAllGpsWatchers();
+      }
+    } else {
+      window.syncAdaptiveGpsPowerProfile(false);
+    }
+  });
+
+  // Activar el perfil frío inmediatamente al cargar
+  window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(function() {
+      window.syncAdaptiveGpsPowerProfile(false);
+    }, 900);
+  });
+})();
+</script>
+<style>
+  /* MOTORUTA_MOBILE_SYNC_V18: MODO FRÍO (COOL-RUN GPU & THERMAL OPTIMIZATION)
+     1. Eliminar el filtro pixel-shader de 5 etapas sobre los mosaicos del mapa (los mosaicos CartoDB ya vienen oscuros nativos).
+     2. Desactivar backdrop-filter: blur() continuo en paneles para liberar la GPU móvil.
+     3. Detener animaciones infinitas de box-shadow en reposo (60 FPS -> 0 FPS cuando no hay emergencia). */
+  .dark-map-tiles {
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+  header,
+  #sidebar-panel,
+  #mobile-bottom-thumb-nav,
+  #glove-mode-bottom-dock,
+  .midnight-card,
+  .modal-backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .real-gps-rider-dot,
+  #btn-open-sos.sos-pulse,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+  }
+  /* Solo pulsar con GPU liviana (transform/opacity) cuando el usuario realmente activó una emergencia SOS */
+  @keyframes motoruta-sos-light-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.09); opacity: 0.88; }
+  }
+  .sos-active-pin-pulse {
+    animation: motoruta-sos-light-pulse 1.6s ease-in-out infinite !important;
+    will-change: transform, opacity;
   }
 </style>
 </body>
